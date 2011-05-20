@@ -82,8 +82,10 @@ struct tcp_conn {
 };
 
 
+/** Defines a TCP-Connection Helper */
 struct tcp_helper {
 	struct le le;
+	int layer;
 	tcp_helper_estab_h *estabh;
 	tcp_helper_send_h *sendh;
 	tcp_helper_recv_h *recvh;
@@ -1081,6 +1083,15 @@ int tcp_send(struct tcp_conn *tc, struct mbuf *mb)
 }
 
 
+/**
+ * Set the send handler on a TCP Connection, which will be called
+ * every time it is ready to send data
+ *
+ * @param tc    TCP Connection
+ * @param sendh TCP Send handler
+ *
+ * @return 0 if success, otherwise errorcode
+ */
 int tcp_set_send(struct tcp_conn *tc, tcp_send_h *sendh)
 {
 	if (!tc)
@@ -1185,19 +1196,49 @@ void tcp_conn_rxsz_set(struct tcp_conn *tc, size_t rxsz)
 }
 
 
+/**
+ * Get the file descriptor of a TCP Connection
+ *
+ * @param tc TCP-Connection
+ *
+ * @return File destriptor, or -1 if errors
+ */
 int tcp_conn_fd(const struct tcp_conn *tc)
 {
 	return tc ? tc->fdc : -1;
 }
 
 
-int tcp_register_helper(struct tcp_helper **thp, struct tcp_conn *tc, int *fd,
+static bool sort_handler(struct le *le1, struct le *le2, void *arg)
+{
+	struct tcp_helper *th1 = le1->data, *th2 = le2->data;
+	(void)arg;
+
+	return th1->layer <= th2->layer;
+}
+
+
+/**
+ * Register a new TCP-helper on a TCP-Connection
+ *
+ * @param thp   Pointer to allocated TCP helper
+ * @param tc    TCP Connection
+ * @param layer Protocol layer; higher number means higher up in stack
+ * @param eh    Established handler
+ * @param sh    Send handler
+ * @param rh    Receive handler
+ * @param arg   Handler argument
+ *
+ * @return 0 if success, otherwise errorcode
+ */
+int tcp_register_helper(struct tcp_helper **thp, struct tcp_conn *tc,
+			int layer,
 			tcp_helper_estab_h *eh, tcp_helper_send_h *sh,
 			tcp_helper_recv_h *rh, void *arg)
 {
 	struct tcp_helper *th;
 
-	if (!thp || !tc)
+	if (!tc)
 		return EINVAL;
 
 	th = mem_zalloc(sizeof(*th), helper_destructor);
@@ -1206,15 +1247,16 @@ int tcp_register_helper(struct tcp_helper **thp, struct tcp_conn *tc, int *fd,
 
 	list_append(&tc->helpers, &th->le, th);
 
+	th->layer  = layer;
 	th->estabh = eh ? eh : helper_estab_handler;
 	th->sendh  = sh ? sh : helper_send_handler;
 	th->recvh  = rh ? rh : helper_recv_handler;
 	th->arg = arg;
 
-	if (fd)
-		*fd = tc->fdc;
+	list_sort(&tc->helpers, sort_handler, NULL);
 
-	*thp = th;
+	if (thp)
+		*thp = th;
 
 	return 0;
 }

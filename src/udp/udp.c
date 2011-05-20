@@ -72,7 +72,7 @@ struct udp_sock {
 	int err;             /**< Cached error code           */
 };
 
-
+/** Defines a UDP helper */
 struct udp_helper {
 	struct le le;
 	int layer;
@@ -577,7 +577,7 @@ int udp_setsockopt(struct udp_sock *us, int level, int optname,
  * Set the send/receive buffer size on a UDP Socket
  *
  * @param us   UDP Socket
- * @param size Buffer size
+ * @param size Buffer size in bytes
  *
  * @return 0 if success, otherwise errorcode
  */
@@ -642,6 +642,14 @@ void udp_handler_set(struct udp_sock *us, udp_recv_h *rh, void *arg)
 }
 
 
+/**
+ * Get the File Descriptor from a UDP Socket
+ *
+ * @param us  UDP Socket
+ * @param af  Address Family
+ *
+ * @return File Descriptor, or -1 for errors
+ */
 int udp_sock_fd(const struct udp_sock *us, int af)
 {
 	if (!us)
@@ -720,6 +728,7 @@ static bool sort_handler(struct le *le1, struct le *le2, void *arg)
 {
 	struct udp_helper *uh1 = le1->data, *uh2 = le2->data;
 	(void)arg;
+
 	return uh1->layer <= uh2->layer;
 }
 
@@ -729,7 +738,6 @@ static bool sort_handler(struct le *le1, struct le *le2, void *arg)
  *
  * @param uhp   Pointer to allocated UDP helper object
  * @param us    UDP socket
- * @param fd    Returned file-descriptor (optional)
  * @param layer Layer number; higher number means higher up in stack
  * @param sh    Send handler
  * @param rh    Receive handler
@@ -738,7 +746,7 @@ static bool sort_handler(struct le *le1, struct le *le2, void *arg)
  * @return 0 if success, otherwise errorcode
  */
 int udp_register_helper(struct udp_helper **uhp, struct udp_sock *us,
-			int *fd, int layer,
+			int layer,
 			udp_helper_send_h *sh, udp_helper_recv_h *rh,
 			void *arg)
 {
@@ -759,9 +767,6 @@ int udp_register_helper(struct udp_helper **uhp, struct udp_sock *us,
 	uh->arg   = arg;
 
 	list_sort(&us->helpers, sort_handler, NULL);
-
-	if (fd)
-		*fd = us->fd;
 
 	if (uhp)
 		*uhp = uh;

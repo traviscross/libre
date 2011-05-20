@@ -620,8 +620,11 @@ rpm:    tar
 # - system installation
 #
 
+LIBRE_PATH := ../re
+
 # Include path
-LIBRE_INC := $(shell [ -f ../re/include/re.h ] && echo "../re/include")
+LIBRE_INC := $(shell [ -f $(LIBRE_PATH)/include/re.h ] && \
+	echo "$(LIBRE_PATH)/include")
 ifeq ($(LIBRE_INC),)
 LIBRE_INC := $(shell [ -f /usr/local/include/re/re.h ] && \
 	echo "/usr/local/include/re")
@@ -631,7 +634,8 @@ LIBRE_INC := $(shell [ -f /usr/include/re/re.h ] && echo "/usr/include/re")
 endif
 
 # Library path
-LIBRE_SO  := $(shell [ -f ../re/libre$(LIB_SUFFIX) ] && echo "../re")
+LIBRE_SO  := $(shell [ -f $(LIBRE_PATH)/libre$(LIB_SUFFIX) ] \
+	&& echo "$(LIBRE_PATH)")
 ifeq ($(LIBRE_SO),)
 LIBRE_SO  := $(shell [ -f /usr/local/lib/libre$(LIB_SUFFIX) ] \
 	&& echo "/usr/local/lib")
@@ -725,6 +729,20 @@ splint-verbose:
 
 splint-test:
 	@splint $(SPLINT_LIBS) $(SPLINT_OPTIONS) test.c
+
+
+###############################################################################
+#
+# Clang section
+#
+
+CLANG_OPTIONS := -Iinclude -I$(LIBRE_INC) $(CFLAGS)
+CLANG_IGNORE  :=
+CLANG_SRCS    += $(filter-out $(CLANG_IGNORE), $(patsubst %,src/%,$(SRCS)))
+
+clang:
+	@clang --analyze $(CLANG_OPTIONS) $(CLANG_SRCS)
+	@rm -f *.plist
 
 
 ###############################################################################

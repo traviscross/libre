@@ -11,6 +11,7 @@
 #include <re_hash.h>
 #include <re_fmt.h>
 #include <re_uri.h>
+#include <re_sys.h>
 #include <re_tmr.h>
 #include <re_sip.h>
 #include <re_sipreg.h>
@@ -18,15 +19,16 @@
 
 enum {
 	DEFAULT_EXPIRES = 3600,
-	FAIL_WAIT = 60 * 1000,
 };
 
 
+/** Defines a SIP Registration client */
 struct sipreg {
 	struct sip_loopstate ls;
 	struct sa laddr;
 	struct tmr tmr;
 	struct sip *sip;
+	struct sip_keepalive *ka;
 	struct sip_request *req;
 	struct sip_dialog *dlg;
 	struct sip_auth *auth;
@@ -35,11 +37,13 @@ struct sipreg {
 	sip_resp_h *resph;
 	void *arg;
 	uint32_t expires;
+	uint32_t failc;
 	uint32_t wait;
 	enum sip_transp tp;
 	bool registered;
 	bool terminated;
 	char *params;
+	int regid;
 };
 
 
@@ -76,12 +80,19 @@ static void destructor(void *arg)
 		}
 	}
 
+	mem_deref(reg->ka);
 	mem_deref(reg->dlg);
 	mem_deref(reg->auth);
 	mem_deref(reg->cuser);
 	mem_deref(reg->sip);
 	mem_deref(reg->hdrs);
 	mem_deref(reg->params);
+}
+
+
+static uint32_t failwait(uint32_t failc)
+{
+	return min(1800, (30 * (1<<failc))) * (500 + rand_u16() % 501);
 }
 
 
@@ -92,9 +103,37 @@ static void tmr_handler(void *arg)
 
 	err = request(reg, true);
 	if (err) {
-		tmr_start(&reg->tmr, FAIL_WAIT, tmr_handler, reg);
+		tmr_start(&reg->tmr, failwait(++reg->failc), tmr_handler, reg);
 		reg->resph(err, NULL, reg->arg);
 	}
+}
+
+
+static void keepalive_handler(int err, void *arg)
+{
+	struct sipreg *reg = arg;
+
+	/* failure will be handled in response handler */
+	if (reg->req || reg->terminated)
+		return;
+
+	tmr_start(&reg->tmr, failwait(++reg->failc), tmr_handler, reg);
+	reg->resph(err, NULL, reg->arg);
+}
+
+
+static void start_outbound(struct sipreg *reg, const struct sip_msg *msg)
+{
+	const struct sip_hdr *flowtimer;
+
+	if (!sip_msg_hdr_has_value(msg, SIP_HDR_REQUIRE, "outbound"))
+		return;
+
+	flowtimer = sip_msg_hdr(msg, SIP_HDR_FLOW_TIMER);
+
+	(void)sip_keepalive_start(&reg->ka, reg->sip, msg,
+				  flowtimer ? pl_u32(&flowtimer->val) : 0,
+				  keepalive_handler, reg);
 }
 
 
@@ -133,10 +172,12 @@ static void response_handler(int err, const struct sip_msg *msg, void *arg)
 	const struct sip_hdr *minexp;
 	struct sipreg *reg = arg;
 
-	reg->wait = FAIL_WAIT;
+	reg->wait = failwait(reg->failc + 1);
 
-	if (err || sip_request_loops(&reg->ls, msg->scode))
+	if (err || sip_request_loops(&reg->ls, msg->scode)) {
+		reg->failc++;
 		goto out;
+	}
 
 	if (msg->scode < 200) {
 		return;
@@ -147,6 +188,10 @@ static void response_handler(int err, const struct sip_msg *msg, void *arg)
 		sip_msg_hdr_apply(msg, true, SIP_HDR_CONTACT, contact_handler,
 				  reg);
 		reg->wait *= 900;
+		reg->failc = 0;
+
+		if (reg->regid > 0 && !reg->terminated && !reg->ka)
+			start_outbound(reg, msg);
 	}
 	else {
 		if (reg->terminated && !reg->registered)
@@ -168,6 +213,10 @@ static void response_handler(int err, const struct sip_msg *msg, void *arg)
 
 			return;
 
+		case 403:
+			sip_auth_reset(reg->auth);
+			break;
+
 		case 423:
 			minexp = sip_msg_hdr(msg, SIP_HDR_MIN_EXPIRES);
 			if (!minexp || !pl_u32(&minexp->val) || !reg->expires)
@@ -181,6 +230,8 @@ static void response_handler(int err, const struct sip_msg *msg, void *arg)
 
 			return;
 		}
+
+		++reg->failc;
 	}
 
  out:
@@ -202,6 +253,8 @@ static int send_handler(enum sip_transp tp, const struct sa *src,
 			const struct sa *dst, struct mbuf *mb, void *arg)
 {
 	struct sipreg *reg = arg;
+	int err;
+
 	(void)dst;
 
 	if (reg->expires > 0) {
@@ -209,11 +262,18 @@ static int send_handler(enum sip_transp tp, const struct sa *src,
 		reg->tp = tp;
 	}
 
-	return mbuf_printf(mb, "Contact: <sip:%s@%J%s>;expires=%u%s%s\r\n",
-			   reg->cuser, &reg->laddr, sip_transp_param(reg->tp),
-			   reg->expires,
-			   reg->params ? ";" : "",
-			   reg->params ? reg->params : "");
+	err = mbuf_printf(mb, "Contact: <sip:%s@%J%s>;expires=%u%s%s",
+			  reg->cuser, &reg->laddr, sip_transp_param(reg->tp),
+			  reg->expires,
+			  reg->params ? ";" : "",
+			  reg->params ? reg->params : "");
+
+	if (reg->regid > 0)
+		err |= mbuf_printf(mb, ";reg-id=%d", reg->regid);
+
+	err |= mbuf_printf(mb, "\r\n");
+
+	return err;
 }
 
 
@@ -227,18 +287,44 @@ static int request(struct sipreg *reg, bool reset_ls)
 
 	return sip_drequestf(&reg->req, reg->sip, true, "REGISTER", reg->dlg,
 			     0, reg->auth, send_handler, response_handler, reg,
+			     "%s"
 			     "%b"
 			     "Content-Length: 0\r\n"
 			     "\r\n",
+			     reg->regid > 0
+			     ? "Supported: outbound, path\r\n" : "",
 			     reg->hdrs ? mbuf_buf(reg->hdrs) : NULL,
 			     reg->hdrs ? mbuf_get_left(reg->hdrs) : 0);
 }
 
 
+/**
+ * Allocate a SIP Registration client
+ *
+ * @param regp     Pointer to allocated SIP Registration client
+ * @param sip      SIP Stack instance
+ * @param reg_uri  SIP Request URI
+ * @param to_uri   SIP To-header URI
+ * @param from_uri SIP From-header URI
+ * @param expires  Registration interval in [seconds]
+ * @param cuser    Contact username
+ * @param routev   Optional route vector
+ * @param routec   Number of routes
+ * @param regid    Register identification
+ * @param authh    Authentication handler
+ * @param aarg     Authentication handler argument
+ * @param aref     True to ref argument
+ * @param resph    Response handler
+ * @param arg      Response handler argument
+ * @param params   Optional Contact-header parameters
+ * @param fmt      Formatted strings with extra SIP Headers
+ *
+ * @return 0 if success, otherwise errorcode
+ */
 int sipreg_register(struct sipreg **regp, struct sip *sip, const char *reg_uri,
 		    const char *to_uri, const char *from_uri, uint32_t expires,
 		    const char *cuser, const char *routev[], uint32_t routec,
-		    sip_auth_h *authh, void *aarg, bool aref,
+		    int regid, sip_auth_h *authh, void *aarg, bool aref,
 		    sip_resp_h *resph, void *arg,
 		    const char *params, const char *fmt, ...)
 {
@@ -291,6 +377,7 @@ int sipreg_register(struct sipreg **regp, struct sip *sip, const char *reg_uri,
 	reg->expires = expires;
 	reg->resph   = resph ? resph : dummy_handler;
 	reg->arg     = arg;
+	reg->regid   = regid;
 
 	err = request(reg, true);
 	if (err)

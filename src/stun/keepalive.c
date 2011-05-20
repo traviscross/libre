@@ -1,5 +1,5 @@
 /**
- * @file keepalive.c  STUN usage for NAT Keepalives
+ * @file stun/keepalive.c  STUN usage for NAT Keepalives
  *
  * Copyright (C) 2010 Creytiv.com
  */
@@ -201,7 +201,7 @@ int stun_keepalive_alloc(struct stun_keepalive **skap,
 	switch (proto) {
 
 	case IPPROTO_UDP:
-		err = udp_register_helper(&ska->uh, sock, NULL, layer,
+		err = udp_register_helper(&ska->uh, sock, layer,
 					  NULL, udp_recv_handler, ska);
 		break;
 

@@ -15,7 +15,6 @@ typedef void (tmr_h)(void *arg);
 /** Defines a timer */
 struct tmr {
 	struct le le;       /**< Linked list element */
-	struct list *tmrl;  /**< Parent list         */
 	tmr_h *th;          /**< Timeout handler     */
 	void *arg;          /**< Handler argument    */
 	uint64_t jfs;       /**< Jiffies for timeout */
@@ -31,3 +30,16 @@ void     tmr_init(struct tmr *tmr);
 void     tmr_start(struct tmr *tmr, uint64_t delay, tmr_h *th, void *arg);
 void     tmr_cancel(struct tmr *tmr);
 uint64_t tmr_get_expire(const struct tmr *tmr);
+
+
+/**
+ * Check if the timer is running
+ *
+ * @param tmr Timer to check
+ *
+ * @return true if running, false if not running
+ */
+static inline bool tmr_isrunning(const struct tmr *tmr)
+{
+	return tmr ? NULL != tmr->th : false;
+}

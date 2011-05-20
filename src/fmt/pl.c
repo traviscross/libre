@@ -149,6 +149,82 @@ uint64_t pl_u64(const struct pl *pl)
 
 
 /**
+ * Convert a hex pointer-length object to a numeric 64-bit value
+ *
+ * @param pl Pointer-length object
+ *
+ * @return 64-bit value
+ */
+uint64_t pl_x64(const struct pl *pl)
+{
+	uint64_t v=0, mul=1;
+	const char *p;
+
+	if (!pl || !pl->p)
+		return 0;
+
+	p = &pl->p[pl->l];
+	while (p > pl->p) {
+
+		const char ch = *--p;
+		uint8_t c;
+
+		if ('0' <= ch && ch <= '9')
+			c = ch - '0';
+		else if ('A' <= ch && ch <= 'F')
+			c = ch - 'A' + 10;
+		else if ('a' <= ch && ch <= 'f')
+			c = ch - 'a' + 10;
+		else
+			return 0;
+
+		v += mul * c;
+		mul *= 16;
+	}
+
+	return v;
+}
+
+
+/**
+ * Convert a pointer-length object to floating point representation
+ *
+ * @param pl Pointer-length object
+ *
+ * @return Double value
+ */
+double pl_float(const struct pl *pl)
+{
+	double v=0, mul=1;
+	const char *p;
+
+	if (!pl || !pl->p)
+		return 0;
+
+	p = &pl->p[pl->l];
+
+	while (p > pl->p) {
+
+		const char ch = *--p;
+
+		if ('0' <= ch && ch <= '9') {
+			v += mul * (ch - '0');
+			mul *= 10;
+		}
+		else if (ch == '.') {
+			v /= mul;
+			mul = 1;
+		}
+		else {
+			return 0;
+		}
+	}
+
+	return v;
+}
+
+
+/**
  * Check if pointer-length object is set
  *
  * @param pl Pointer-length object
@@ -303,19 +379,21 @@ int pl_cmp(const struct pl *pl1, const struct pl *pl2)
 	if (pl1->l != pl2->l)
 		return EINVAL;
 
+	/* Zero-length strings are always identical */
+	if (pl1->l == 0)
+		return 0;
+
 	/*
 	 * ~35% speed increase for fmt/pl test
 	 */
 
 	/* The two pl's are the same */
-	if (pl1 == pl2) {
+	if (pl1 == pl2)
 		return 0;
-	}
 
 	/* Two different pl's pointing to same string */
-	if (pl1->p == pl2->p && pl1->l == pl2->l) {
+	if (pl1->p == pl2->p)
 		return 0;
-	}
 
 	return 0 == memcmp(pl1->p, pl2->p, pl1->l) ? 0 : EINVAL;
 }
@@ -372,19 +450,21 @@ int pl_casecmp(const struct pl *pl1, const struct pl *pl2)
 	if (pl1->l != pl2->l)
 		return EINVAL;
 
+	/* Zero-length strings are always identical */
+	if (pl1->l == 0)
+		return 0;
+
 	/*
 	 * ~35% speed increase for fmt/pl test
 	 */
 
 	/* The two pl's are the same */
-	if (pl1 == pl2) {
+	if (pl1 == pl2)
 		return 0;
-	}
 
 	/* Two different pl's pointing to same string */
-	if (pl1->p == pl2->p && pl1->l == pl2->l) {
+	if (pl1->p == pl2->p)
 		return 0;
-	}
 
 #ifdef HAVE_STRINGS_H
 	return 0 == strncasecmp(pl1->p, pl2->p, pl1->l) ? 0 : EINVAL;

@@ -474,7 +474,17 @@ int mbuf_printf(struct mbuf *mb, const char *fmt, ...)
 }
 
 
-/** todo: create substf variant */
+/**
+ * Write a pointer-length string to a memory buffer, excluding a section
+ *
+ * @param mb   Memory buffer
+ * @param pl   Pointer-length string
+ * @param skip Part of pl to exclude
+ *
+ * @return 0 if success, otherwise errorcode
+ *
+ * @todo: create substf variante
+ */
 int mbuf_write_pl_skip(struct mbuf *mb, const struct pl *pl,
 		       const struct pl *skip)
 {
@@ -498,4 +508,22 @@ int mbuf_write_pl_skip(struct mbuf *mb, const struct pl *pl,
 	r.l = pl->p + pl->l - r.p;
 
 	return mbuf_write_mem(mb, (const uint8_t *)r.p, r.l);
+}
+
+
+/**
+ * Debug the memory buffer
+ *
+ * @param pf Print handler
+ * @param mb Memory buffer
+ *
+ * @return 0 if success, otherwise errorcode
+ */
+int mbuf_debug(struct re_printf *pf, const struct mbuf *mb)
+{
+	if (!mb)
+		return 0;
+
+	return re_hprintf(pf, "buf=%p pos=%zu end=%zu size=%zu",
+			  mb->buf, mb->pos, mb->end, mb->size);
 }

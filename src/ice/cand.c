@@ -11,6 +11,7 @@
 #include <re_list.h>
 #include <re_tmr.h>
 #include <re_sa.h>
+#include <re_sys.h>
 #include <re_stun.h>
 #include <re_turn.h>
 #include <re_ice.h>
@@ -22,12 +23,11 @@
 #include <re_dbg.h>
 
 
-static void cand_destructor(void *data)
+static void cand_destructor(void *arg)
 {
-	struct cand *cand = data;
+	struct cand *cand = arg;
 
 	list_unlink(&cand->le);
-
 	mem_deref(cand->foundation);
 	mem_deref(cand->ifname);
 
@@ -119,10 +119,8 @@ int icem_lcand_add(struct icem *icem, struct cand *base, enum cand_type type,
 	struct cand *cand;
 	int err;
 
-	if (!base) {
-		DEBUG_WARNING("icem add local candidate: no base\n");
+	if (!base)
 		return EINVAL;
-	}
 
 	err = cand_alloc(&cand, icem, type, base->compid,
 			 ice_calc_prio(type, 0, base->compid),
@@ -164,6 +162,37 @@ int icem_rcand_add(struct icem *icem, enum cand_type type, uint8_t compid,
 
 	if (err)
 		mem_deref(rcand);
+
+	return err;
+}
+
+
+int icem_rcand_add_prflx(struct cand **rcp, struct icem *icem, uint8_t compid,
+			 uint32_t prio, const struct sa *addr)
+{
+	struct cand *rcand;
+	int err;
+
+	if (!icem || !addr)
+		return EINVAL;
+
+	rcand = mem_zalloc(sizeof(*rcand), cand_destructor);
+	if (!rcand)
+		return ENOMEM;
+
+	list_append(&icem->rcandl, &rcand->le, rcand);
+
+	rcand->type   = CAND_TYPE_PRFLX;
+	rcand->compid = compid;
+	rcand->prio   = prio;
+	rcand->addr   = *addr;
+
+	err = re_sdprintf(&rcand->foundation, "%08x", rand_u32());
+
+	if (err)
+		mem_deref(rcand);
+	else if (rcp)
+		*rcp = rcand;
 
 	return err;
 }

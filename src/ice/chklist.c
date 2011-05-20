@@ -16,11 +16,14 @@
 #include "ice.h"
 
 
-#define DEBUG_MODULE "checklist"
+#define DEBUG_MODULE "chklist"
 #define DEBUG_LEVEL 5
 #include <re_dbg.h>
 
 
+/**
+ * Forming Candidate Pairs
+ */
 static int candpairs_form(struct icem *icem)
 {
 	struct le *le;
@@ -72,7 +75,9 @@ static void *unique_handler(struct le *le1, struct le *le2)
 }
 
 
-/** Pruning the Pairs */
+/**
+ * Pruning the Pairs
+ */
 static void candpair_prune(struct icem *icem)
 {
 	/* The agent MUST prune the list.
@@ -85,12 +90,15 @@ static void candpair_prune(struct icem *icem)
 
 	uint32_t n = ice_list_unique(&icem->checkl, unique_handler);
 	if (n > 0) {
-		DEBUG_NOTICE("pruned candidate pairs: %u\n", n);
+		DEBUG_NOTICE("%s: pruned candidate pairs: %u\n",
+			     icem->name, n);
 	}
 }
 
 
-/** Computing States */
+/**
+ * Computing States
+ */
 static void candpair_set_states(struct icem *icem)
 {
 	struct le *le, *le2;
@@ -118,7 +126,7 @@ static void candpair_set_states(struct icem *icem)
 				cp = cp2;
 		}
 
-		cp->state = CANDPAIR_WAITING;
+		icem_candpair_set_state(cp, CANDPAIR_WAITING);
 	}
 }
 
@@ -139,7 +147,8 @@ int icem_checklist_form(struct icem *icem)
 		return EINVAL;
 
 	if (ICE_MODE_LITE == icem->ice->lmode) {
-		DEBUG_WARNING("Checklist form: only valid for full-mode\n");
+		DEBUG_WARNING("%s: Checklist: only valid for full-mode\n",
+			      icem->name);
 		return EINVAL;
 	}
 
@@ -169,7 +178,7 @@ int icem_checklist_form(struct icem *icem)
 /* If all of the pairs in the check list are now either in the Failed or
    Succeeded state:
  */
-static bool iscompleted(struct icem *icem)
+static bool iscompleted(const struct icem *icem)
 {
 	struct le *le;
 
@@ -177,15 +186,8 @@ static bool iscompleted(struct icem *icem)
 
 		const struct candpair *cp = le->data;
 
-		switch (cp->state) {
-
-		case CANDPAIR_FAILED:
-		case CANDPAIR_SUCCEEDED:
-			continue;
-
-		default:
+		if (!icem_candpair_iscompleted(cp))
 			return false;
-		}
 	}
 
 	return true;
@@ -201,27 +203,32 @@ static void concluding_ice(struct icem_comp *comp)
 		return;
 
 	/* pick the best candidate pair, highest priority */
-	icem_candpair_prio_order(&comp->icem->validl);
 	cp = icem_candpair_find_st(&comp->icem->validl, comp->id,
 				   CANDPAIR_SUCCEEDED);
 	if (!cp) {
-		DEBUG_WARNING("valid candpair not found for compid %u\n",
-			      comp->id);
+		DEBUG_WARNING("{%s.%u} conclude: no valid candpair found"
+			      " (validl=%u)\n",
+			      comp->icem->name, comp->id,
+			      list_count(&comp->icem->validl));
 		return;
 	}
 
 	icem_comp_set_selected(comp, cp);
 
-	/* send STUN request with USE_CAND flag via triggered qeueue */
-	cp->use_cand = true;
-	icem_triggq_push(comp->icem, cp);
-	icem_conncheck_schedule_check(comp->icem);
+	if (comp->icem->ice->conf.nom == ICE_NOMINATION_REGULAR) {
+
+		/* send STUN request with USE_CAND flag via triggered qeueue */
+		(void)icem_conncheck_send(cp, true, true);
+		icem_conncheck_schedule_check(comp->icem);
+	}
 
 	comp->concluded = true;
 }
 
 
-/* 7.1.3.3.  Check List and Timer State Updates */
+/**
+ * Check List and Timer State Updates
+ */
 void icem_checklist_update(struct icem *icem)
 {
 	struct le *le;
@@ -231,17 +238,18 @@ void icem_checklist_update(struct icem *icem)
 		return;
 
 	/*
-	  o  If there is not a pair in the valid list for each component of the
-	  media stream, the state of the check list is set to Failed.
-	*/
+	 * If there is not a pair in the valid list for each component of the
+	 * media stream, the state of the check list is set to Failed.
+	 */
 	for (le = icem->compl.head; le; le = le->next) {
 
 		struct icem_comp *comp = le->data;
 
-		if (!icem_candpair_find_st(&icem->validl, comp->id,
-					   CANDPAIR_SUCCEEDED)) {
-			DEBUG_WARNING("no candidate pair for compid %u\n",
-				      comp->id);
+		if (!icem_candpair_find_compid(&icem->validl, comp->id)) {
+			DEBUG_WARNING("{%s.%u} no valid candidate pair"
+				      " (validl=%u)\n",
+				      icem->name, comp->id,
+				      list_count(&icem->validl));
 			err = ENOENT;
 			break;
 		}
@@ -251,9 +259,7 @@ void icem_checklist_update(struct icem *icem)
 		if (!comp->cp_sel)
 			continue;
 
-		/* remove TURN client if not used */
-		if (comp->cp_sel->lcand->type != CAND_TYPE_RELAY)
-			comp->turnc = mem_deref(comp->turnc);
+		icem_comp_keepalive(comp, true);
 	}
 
 	icem->state = err ? CHECKLIST_FAILED : CHECKLIST_COMPLETED;

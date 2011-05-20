@@ -17,7 +17,7 @@
 #include "ice.h"
 
 
-#define DEBUG_MODULE "ice_gather"
+#define DEBUG_MODULE "icegath"
 #define DEBUG_LEVEL 5
 #include <re_dbg.h>
 
@@ -64,8 +64,8 @@ static void stun_resp_handler(int err, uint16_t scode, const char *reason,
 	--icem->nstun;
 
 	if (err || scode > 0) {
-		DEBUG_WARNING("{%u} keepalive failed: %s\n",
-			      comp->id, strerror(err));
+		DEBUG_WARNING("{%s.%u} STUN Request failed: %s\n",
+			      icem->name, comp->id, strerror(err));
 		goto out;
 	}
 
@@ -122,15 +122,20 @@ static void turnc_handler(int err, uint16_t scode, const char *reason,
 
 	--icem->nstun;
 
+	/* TURN failed, so we destroy the client */
+	if (err || scode) {
+		comp->turnc = mem_deref(comp->turnc);
+	}
+
 	if (err) {
-		DEBUG_WARNING("{%d} TURN Client error: %s\n",
-			      comp->id, strerror(err));
+		DEBUG_WARNING("{%s.%u} TURN Client error: %s\n",
+			      icem->name, comp->id, strerror(err));
 		goto out;
 	}
 
 	if (scode) {
-		DEBUG_WARNING("{%d} TURN Client error: %u %s\n",
-			      comp->id, scode, reason);
+		DEBUG_WARNING("{%s.%u} TURN Client error: %u %s\n",
+			      icem->name, comp->id, scode, reason);
 		err = send_binding_request(icem, comp);
 		if (err)
 			goto out;

@@ -2,7 +2,7 @@ README
 ------
 
 libre - "Generic library for real-time communications with async IO support"
-Copyright (C) 2010 Creytiv.com
+Copyright (C) 2010 - 2011 Creytiv.com
 
 Distributed under BSD license
 
@@ -29,7 +29,7 @@ Modules:
 * hash      testing       Hashmap table
 * hmac      testing       HMAC: Keyed-Hashing for Message Authentication
 * httpauth  unstable      HTTP-based Authentication (RFC 2617)
-* ice       development   Interactive Connectivity Establishment (ICE)
+* ice       unstable      Interactive Connectivity Establishment (ICE)
 * jbuf      testing       Jitter buffer
 * list      stable        Sortable doubly-linked list handling
 * lock      testing       Resource locking functions
@@ -38,7 +38,7 @@ Modules:
 * md5       stable        The MD5 Message-Digest Algorithm (RFC 1321)
 * mem       stable        Memory referencing
 * mod       testing       Run-time module loading
-* mqueue    unstable      Thread-safe message queue
+* mqueue    testing       Thread-safe message queue
 * natbd     unstable      NAT Behavior Discovery using STUN
 * net       unstable      Networking routines
 * rtp       testing       Real-time Transport Protocol
@@ -54,7 +54,7 @@ Modules:
 * telev     testing       Telephony Events (RFC 4733)
 * tls       unstable      Transport Layer Security
 * tmr       stable        Timer handling
-* turn      unstable      Obtaining Relay Addresses from STUN (TURN)
+* turn      testing       Obtaining Relay Addresses from STUN (TURN)
 * udp       testing       UDP transport
 * uri       testing       Generic URI library
 
@@ -95,13 +95,15 @@ Features:
 * RFC 5118 - SIP Torture Test Messages for IPv6
 * RFC 5245 - Interactive Connectivity Establishment (ICE)
 * RFC 5389 - Session Traversal Utilities for NAT (STUN)
+* RFC 5626 - Managing Client-Initiated Connections in SIP
+* RFC 5761 - Multiplexing RTP Data and Control Packets on a Single Port
 * RFC 5766 - Traversal Using Relays around NAT (TURN)
 * RFC 5768 - Indicating Support for ICE in SIP
 * RFC 5769 - Test vectors for STUN
 * RFC 5780 - NAT Behaviour Discovery Using STUN
 * RFC 6026 - Correct Transaction Handling for 2xx Resp. to SIP INVITE Requests
+* RFC 6156 - TURN Extension for IPv6
 * Symmetric RTP
-* draft-ietf-behave-turn-ipv6-08              - TURN Extension for IPv4/IPv6 Transition
 * ITU-T G.711 Appendix I and Appendix II
 
 

@@ -31,6 +31,8 @@ void     pl_set_mbuf(struct pl *pl, const struct mbuf *mb);
 uint32_t pl_u32(const struct pl *pl);
 uint32_t pl_x32(const struct pl *pl);
 uint64_t pl_u64(const struct pl *pl);
+uint64_t pl_x64(const struct pl *pl);
+double   pl_float(const struct pl *pl);
 bool     pl_isset(const struct pl *pl);
 int      pl_strcpy(const struct pl *pl, char *str, size_t size);
 int      pl_strdup(char **dst, const struct pl *src);
@@ -57,6 +59,8 @@ static inline void pl_advance(struct pl *pl, ssize_t n)
  * @param p    String to print
  * @param size Size of string to print
  * @param arg  Handler argument
+ *
+ * @return 0 for success, otherwise errorcode
  */
 typedef int(re_vprintf_h)(const char *p, size_t size, void *arg);
 
@@ -71,6 +75,8 @@ struct re_printf {
  *
  * @param pf  Print backend
  * @param arg Handler argument
+ *
+ * @return 0 for success, otherwise errorcode
  */
 typedef int(re_printf_h)(struct re_printf *pf, void *arg);
 
@@ -104,6 +110,7 @@ size_t str_len(const char *s);
 
 
 /* time */
+int  fmt_gmtime(struct re_printf *pf, void *ts);
 int  fmt_human_time(struct re_printf *pf, const uint32_t *seconds);
 
 

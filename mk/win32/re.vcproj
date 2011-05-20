@@ -253,9 +253,6 @@
 					RelativePath="..\..\src\ice\stunsrv.c">
 				</File>
 				<File
-					RelativePath="..\..\src\ice\triggq.c">
-				</File>
-				<File
 					RelativePath="..\..\src\ice\util.c">
 				</File>
 			</Filter>
@@ -551,6 +548,12 @@
 				</File>
 				<File
 					RelativePath="..\..\src\sip\dialog.c">
+				</File>
+				<File
+					RelativePath="..\..\src\sip\keepalive.c">
+				</File>
+				<File
+					RelativePath="..\..\src\sip\keepalive_udp.c">
 				</File>
 				<File
 					RelativePath="..\..\src\sip\msg.c">

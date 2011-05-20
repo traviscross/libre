@@ -14,6 +14,7 @@
 #include <re_sys.h>
 #include <re_md5.h>
 #include <re_httpauth.h>
+#include <re_udp.h>
 #include <re_sip.h>
 #include "sip.h"
 
@@ -111,6 +112,10 @@ static bool cmp_handler(struct le *le, void *arg)
 	struct realm *realm = le->data;
 	struct pl *chrealm = arg;
 
+	/* handle multiple authenticate headers with equal realm value */
+	if (realm->nc == 1)
+		return false;
+
 	return 0 == pl_strcasecmp(chrealm, realm->realm);
 }
 
@@ -123,8 +128,6 @@ static bool auth_handler(const struct sip_hdr *hdr, const struct sip_msg *msg,
 	struct realm *realm = NULL;
 	int err;
 	(void)msg;
-
-	memset(&ch, 0, sizeof(ch));
 
 	if (httpauth_digest_challenge_decode(&ch, &hdr->val)) {
 		err = EBADMSG;
@@ -253,8 +256,10 @@ int sip_auth_encode(struct mbuf *mb, struct sip_auth *auth, const char *met,
 		if (realm->qop) {
 			err |= mbuf_printf(mb, ", cnonce=\"%016llx\"", cnonce);
 			err |= mbuf_write_str(mb, ", qop=auth");
-			err |= mbuf_printf(mb, ", nc=%08x", realm->nc++);
+			err |= mbuf_printf(mb, ", nc=%08x", realm->nc);
 		}
+
+		++realm->nc;
 
 		err |= mbuf_write_str(mb, "\r\n");
 		if (err)
@@ -284,4 +289,13 @@ int sip_auth_alloc(struct sip_auth **authp, sip_auth_h *authh,
 	*authp = auth;
 
 	return 0;
+}
+
+
+void sip_auth_reset(struct sip_auth *auth)
+{
+	if (!auth)
+		return;
+
+	list_flush(&auth->realml);
 }

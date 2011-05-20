@@ -27,14 +27,11 @@ static void icem_destructor(void *data)
 
 	list_unlink(&icem->le);
 	tmr_cancel(&icem->tmr_pace);
-
 	list_flush(&icem->compl);
 	list_flush(&icem->validl);
 	list_flush(&icem->checkl);
 	list_flush(&icem->lcandl);
 	list_flush(&icem->rcandl);
-	list_flush(&icem->triggl);
-
 	mem_deref(icem->stun);
 	mem_deref(icem->rufrag);
 	mem_deref(icem->rpwd);
@@ -62,7 +59,6 @@ int icem_alloc(struct icem **icemp, struct ice *ice, int proto, int layer,
 	list_init(&icem->rcandl);
 	list_init(&icem->checkl);
 	list_init(&icem->validl);
-	list_init(&icem->triggl);
 
 	icem->ice   = ice;
 	icem->layer = layer;
@@ -80,8 +76,8 @@ int icem_alloc(struct icem **icemp, struct ice *ice, int proto, int layer,
 			goto out;
 
 		/* Update STUN Transport */
-		stun_conf(icem->stun)->rto = ICE_DEFAULT_RTO_RTP;
-		stun_conf(icem->stun)->rc = ICE_DEFAULT_RC;
+		stun_conf(icem->stun)->rto = ice->conf.rto;
+		stun_conf(icem->stun)->rc = ice->conf.rc;
 	}
 
 	if (err)
@@ -96,6 +92,15 @@ int icem_alloc(struct icem **icemp, struct ice *ice, int proto, int layer,
 		*icemp = icem;
 
 	return err;
+}
+
+
+void icem_set_name(struct icem *icem, const char *name)
+{
+	if (!icem)
+		return;
+
+	str_ncpy(icem->name, name, sizeof(icem->name));
 }
 
 
@@ -148,7 +153,8 @@ void icem_cand_redund_elim(struct icem *icem)
 {
 	uint32_t n = ice_list_unique(&icem->lcandl, unique_handler);
 	if (n > 0) {
-		DEBUG_NOTICE("redundant candidates eliminated: %u\n", n);
+		DEBUG_NOTICE("%s: redundant candidates eliminated: %u\n",
+			     icem->name, n);
 	}
 }
 
@@ -156,28 +162,41 @@ void icem_cand_redund_elim(struct icem *icem)
 const struct sa *icem_cand_default(struct icem *icem, uint8_t compid)
 {
 	const struct icem_comp *comp = icem_comp_find(icem, compid);
-	if (!comp || !comp->def_cand)
+	if (!comp || !comp->def_lcand)
 		return NULL;
 
-	return &comp->def_cand->addr;
+	return &comp->def_lcand->addr;
 }
 
 
 /**
- * Verifying ICE Support
+ * Verifying ICE Support and set default remote candidate
+ *
+ * @param icem   ICE Media
+ * @param compid Component ID
+ * @param raddr  Address of default remote candidate
+ *
+ * @return True if ICE is supported, otherwise false
  */
 bool icem_verify_support(struct icem *icem, uint8_t compid,
 			 const struct sa *raddr)
 {
+	struct cand *rcand;
 	bool match;
 
 	if (!icem)
 		return false;
 
-	match = !!icem_cand_find(&icem->rcandl, compid, raddr);
+	rcand = icem_cand_find(&icem->rcandl, compid, raddr);
+	match = rcand != NULL;
 
 	if (!match)
 		icem->mismatch = true;
+
+	if (rcand) {
+		icem_comp_set_default_rcand(icem_comp_find(icem, compid),
+					    rcand);
+	}
 
 	return match;
 }
@@ -194,7 +213,51 @@ int icem_add_chan(struct icem *icem, uint8_t compid, const struct sa *raddr)
 	if (!comp)
 		return ENOENT;
 
-	return turnc_add_chan(comp->turnc, raddr, NULL, NULL);
+	if (comp->turnc) {
+		DEBUG_NOTICE("{%s.%u} Add TURN Channel to peer %J\n",
+			     comp->icem->name, comp->id, raddr);
+
+		return turnc_add_chan(comp->turnc, raddr, NULL, NULL);
+	}
+
+	return 0;
+}
+
+
+static void purge_relayed(struct icem *icem, struct icem_comp *comp)
+{
+	DEBUG_NOTICE("{%s.%u} purge local RELAY candidates\n",
+		     icem->name, comp->id);
+
+	/*
+	 * Purge all Candidate-Pairs where the Local candidate
+	 * is of type "Relay"
+	 */
+	icem_candpairs_flush(&icem->checkl, CAND_TYPE_RELAY, comp->id);
+	icem_candpairs_flush(&icem->validl, CAND_TYPE_RELAY, comp->id);
+
+	comp->turnc = mem_deref(comp->turnc);
+}
+
+
+void icem_update(struct icem *icem)
+{
+	struct le *le;
+
+	if (!icem)
+		return;
+
+	for (le = icem->compl.head; le; le = le->next) {
+
+		struct icem_comp *comp = le->data;
+
+		/* remove TURN client if not used by local "Selected" */
+		if (comp->cp_sel) {
+
+			if (comp->cp_sel->lcand->type != CAND_TYPE_RELAY)
+				purge_relayed(icem, comp);
+		}
+	}
 }
 
 
@@ -212,6 +275,8 @@ int icem_debug(struct re_printf *pf, const struct icem *icem)
 	if (!icem)
 		return 0;
 
+	err |= re_hprintf(pf, "----- ICE Media <%s> -----\n", icem->name);
+
 	err |= re_hprintf(pf, " Local Candidates: %H",
 			  icem_cands_debug, &icem->lcandl);
 	err |= re_hprintf(pf, " Remote Candidates: %H",
@@ -221,16 +286,13 @@ int icem_debug(struct re_printf *pf, const struct icem *icem)
 			  icem_candpairs_debug, &icem->checkl);
 	err |= re_hprintf(pf, " Valid list: %H",
 			  icem_candpairs_debug, &icem->validl);
-	err |= re_hprintf(pf, " Triggered queue: %H",
-			  icem_candpairs_debug, &icem->triggl);
 
 	for (le = icem->compl.head; le; le = le->next) {
 
 		const struct icem_comp *comp = le->data;
 
 		if (comp->cp_sel) {
-			err |= re_hprintf(pf, " Selected id=%u:  %H\n",
-					  comp->id,
+			err |= re_hprintf(pf, " Selected: %H\n",
 					  icem_candpair_debug, comp->cp_sel);
 		}
 	}

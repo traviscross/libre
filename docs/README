@@ -20,12 +20,12 @@ Modules:
   name:     status:       description:
 
 * base64    testing       Base-64 encoding/decoding functions
+* bfcp      unstable      The Binary Floor Control Protocol (BFCP)
 * conf      testing       Configuration file parser
 * crc32     testing       32-bit CRC defined in ITU V.42
 * dbg       testing       Debug printing
 * dns       testing       DNS resolving (NAPTR, SRV, A)
 * fmt       testing       Formatted printing and regular expression
-* g711      stable        G.711 codec
 * hash      testing       Hashmap table
 * hmac      testing       HMAC: Keyed-Hashing for Message Authentication
 * httpauth  unstable      HTTP-based Authentication (RFC 2617)
@@ -89,6 +89,7 @@ Features:
 * RFC 3994 - Indication of Message Composition for Instant Messaging
 * RFC 4346 - The TLS Protocol Version 1.1
 * RFC 4566 - SDP: Session Description Protocol
+* RFC 4582 - The Binary Floor Control Protocol (BFCP)
 * RFC 4585 - Extended RTP Profile for RTCP-Based Feedback
 * RFC 4733 - RTP Payload for DTMF Digits, Telephony Tones, and Teleph. Signals
 * RFC 4961 - Symmetric RTP / RTP Control Protocol (RTCP)
@@ -116,7 +117,8 @@ Supported platforms:
 * Symbian OS
 * Solaris
 * Windows
-* Apple Mac OS X
+* Apple Mac OS X and iOS
+* Android
 
 
 Supported compilers:

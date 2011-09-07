@@ -17,10 +17,10 @@ extern "C" {
 
 /* Library modules */
 #include "re_base64.h"
+#include "re_bfcp.h"
 #include "re_conf.h"
 #include "re_crc32.h"
 #include "re_dns.h"
-#include "re_g711.h"
 #include "re_hash.h"
 #include "re_httpauth.h"
 #include "re_ice.h"

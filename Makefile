@@ -6,11 +6,11 @@
 
 # Master version number
 VER_MAJOR := 0
-VER_MINOR := 2
+VER_MINOR := 3
 VER_PATCH := 0
 
 PROJECT   := re
-VERSION   := 0.2.0
+VERSION   := 0.3.0
 
 MK	:= mk/re.mk
 
@@ -21,13 +21,14 @@ MODULES += sip sipreg sipsess
 MODULES += uri httpauth
 MODULES += stun turn ice
 MODULES += natbd
-MODULES += rtp sdp g711 jbuf telev
+MODULES += rtp sdp jbuf telev
 MODULES += dns
 MODULES += md5 crc32 sha hmac base64
 MODULES += udp sa net tcp tls
 MODULES += list mbuf hash
 MODULES += fmt tmr main mem dbg sys lock mqueue
 MODULES += mod conf
+MODULES += bfcp
 
 INSTALL := install
 ifeq ($(DESTDIR),)
@@ -92,6 +93,12 @@ install: $(SHARED) $(STATIC)
 	$(INSTALL) -m 0755 $(SHARED) $(DESTDIR)$(LIBDIR)
 	$(INSTALL) -m 0755 $(STATIC) $(DESTDIR)$(LIBDIR)
 	$(INSTALL) -m 0644 $(MK) $(DESTDIR)$(MKDIR)
+
+uninstall:
+	@rm -rf $(DESTDIR)$(INCDIR)
+	@rm -rf $(DESTDIR)$(MKDIR)
+	@rm -f $(DESTDIR)$(LIBDIR)/$(SHARED)
+	@rm -f $(DESTDIR)$(LIBDIR)/$(STATIC)
 
 -include test.d
 

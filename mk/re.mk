@@ -5,34 +5,37 @@
 #
 # Imported variables:
 #
-#   PROJECT      Project name
-#   VERSION      Version number
-#   CC           Compiler
-#   GCOV         If non-empty, enable GNU Coverage testing
-#   GPROF        If non-empty, enable GNU Profiling
-#   OPT_SPEED    If non-empty, optimize for speed
-#   OPT_SIZE     If non-empty, optimize for size
-#   USE_OPENSSL  If non-empty, link to libssl library
-#   USE_ZLIB     If non-empty, link to libz library
-#   SYSROOT      System root of library and include files
-#   SYSROOT_ALT  Alternative system root of library and include files
-#   EXTRA_CFLAGS Extra compiler flags appended to CFLAGS
-#   EXTRA_LFLAGS Extra linker flags appended to LFLAGS
+#   ARCH           Target architecture
+#   CC             Compiler
+#   CROSS_COMPILE  Cross-compiler prefix (optional)
+#   EXTRA_CFLAGS   Extra compiler flags appended to CFLAGS
+#   EXTRA_LFLAGS   Extra linker flags appended to LFLAGS
+#   GCOV           If non-empty, enable GNU Coverage testing
+#   GPROF          If non-empty, enable GNU Profiling
+#   OPT_SIZE       If non-empty, optimize for size
+#   OPT_SPEED      If non-empty, optimize for speed
+#   PROJECT        Project name
+#   RELEASE        Release build
+#   SYSROOT        System root of library and include files
+#   SYSROOT_ALT    Alternative system root of library and include files
+#   USE_OPENSSL    If non-empty, link to libssl library
+#   USE_ZLIB       If non-empty, link to libz library
+#   VERSION        Version number
 #
 # Exported variables:
 #
-#   CC           Compiler
-#   CCACHE       Compiler ccache tool
-#   CFLAGS       Compiler flags
-#   DFLAGS       Dependency generator flags
-#   LFLAGS       Common linker flags
-#   SH_LFLAGS    Linker flags for shared libraries
-#   MOD_LFLAGS   Linker flags for dynamic modules
-#   APP_LFLAGS   Linker flags for applications using modules
-#   LIBS         Libraries to link against
-#   LIB_SUFFIX   Suffix for shared libraries
-#   MOD_SUFFIX   Suffix for dynamic modules
-#   BIN_SUFFIX   Suffix for binary executables
+#   APP_LFLAGS     Linker flags for applications using modules
+#   BIN_SUFFIX     Suffix for binary executables
+#   CC             Compiler
+#   CCACHE         Compiler ccache tool
+#   CFLAGS         Compiler flags
+#   DFLAGS         Dependency generator flags
+#   LFLAGS         Common linker flags
+#   LIBS           Libraries to link against
+#   LIB_SUFFIX     Suffix for shared libraries
+#   MOD_LFLAGS     Linker flags for dynamic modules
+#   MOD_SUFFIX     Suffix for dynamic modules
+#   SH_LFLAGS      Linker flags for shared libraries
 #
 
 
@@ -177,64 +180,22 @@ endif
 #
 # OS section
 #
-MACHINE   := $(shell $(CC) -dumpmachine)
-OS        := $(shell uname -s | sed -e s/SunOS/solaris/ | tr "[A-Z]" "[a-z]")
-#ARCH      := $(shell echo $(MACHINE) | sed -e 's/\([^-]*\)-.*/\1/')
 
-# TODO get ARCH from first tuple in CC -dumpmachine which is more future proof
-ifeq ($(MACHINE), i386-mingw32)
-	OS   := win32
-	ARCH := i386
+MACHINE   := $(shell $(CC) -dumpmachine)
+
+ifeq ($(CROSS_COMPILE),)
+OS        := $(shell uname -s | sed -e s/SunOS/solaris/ | tr "[A-Z]" "[a-z]")
 endif
-ifeq ($(MACHINE), i486-mingw32)
+
+
+ifneq ($(strip $(filter i386-mingw32 i486-mingw32 i586-mingw32msvc mingw32, \
+	$(MACHINE))),)
 	OS   := win32
-	ARCH := i486
-endif
-ifeq ($(MACHINE), i586-mingw32msvc)
-	OS   := win32
-	ARCH := i586
-endif
 ifeq ($(MACHINE), mingw32)
-	OS   := win32
-	ARCH := i386
 	CROSS_COMPILE :=
 endif
-ifeq ($(MACHINE), i686-pc-cygwin)
-	OS   := cygwin
-	ARCH := i686
 endif
-ifeq ($(MACHINE), mipsel-linux-uclibc)
-	OS   := linux
-	ARCH := mipsel
-endif
-ifeq ($(MACHINE), bfin-linux-uclibc)
-	OS   := linux
-	ARCH := bfin
-endif
-ifeq ($(MACHINE), bfin-uclinux)
-	OS   := linux
-	ARCH := bfin
-endif
-ifeq ($(MACHINE), arm-apple-darwin)
-	OS   := darwin
-	ARCH := arm
-	CROSS_COMPILE ?= $(MACHINE)-
-	CFLAGS += -F/Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks
-endif
-ifeq ($(MACHINE), arm-apple-darwin9)
-	OS   := darwin
-	ARCH := arm
-	CROSS_COMPILE ?= $(MACHINE)-
-	ROOT   := /Developer//Platforms/iPhoneOS.platform/Developer
-	SDK    := $(ROOT)/SDKs/iPhoneOS3.0.sdk
-	CFLAGS += -F$(SDK)/System/Library/Frameworks/
-	CFLAGS += -I$(SDK)/usr/include
-	CFLAGS += -I$(SDK)/usr/lib/gcc/arm-apple-darwin9/4.2.1/include
-	CFLAGS += -isysroot $(SDK)
-	LFLAGS += -F$(SDK)/System/Library/Frameworks
-	LFLAGS += -L$(SDK)/usr/lib
-	LFLAGS += -L$(SDK)/usr/lib/gcc/arm-apple-darwin9/4.2.1/
-endif
+
 
 # default
 LIB_SUFFIX	:= .so
@@ -276,8 +237,6 @@ endif
 	AR		:= ar
 	AFLAGS		:= cru
 	LIB_SUFFIX	:= .dylib
-	ARCH            := $(shell echo $(MACHINE) | \
-				sed -e 's/\([^-]*\)-.*/\1/')
 endif
 ifeq ($(OS),netbsd)
 	CFLAGS		+= -fPIC -DNETBSD
@@ -347,29 +306,84 @@ CFLAGS  += -pedantic
 endif
 
 
+ifeq ($(OS),)
+$(warning Could not detect OS)
+endif
+
+
 ##############################################################################
 #
 # Architecture section
 #
 
-ifeq ($(OS),solaris)
-	GETARCH=uname -p
-else
-	GETARCH=uname -m
-endif
 
 ifeq ($(ARCH),)
-ARCH := $(shell $(GETARCH) | sed -e s/i.86/i386/ -e s/sun4u/sparc64/  \
-			-e s/armv4l/arm/ -e "s/Power Macintosh/ppc/" \
-			-e "s/cobalt/mips2/" \
-			-e s/amd64/x86_64/ )
+ifeq ($(CC_NAME),gcc)
+PREDEF	:= $(shell $(CC) -dM -E -x c $(EXTRA_CFLAGS) $(CFLAGS) /dev/null)
+
+ifneq ($(strip $(filter i386 __i386__ __i386 _M_IX86 __X86__ _X86_, \
+	$(PREDEF))),)
+ARCH	:= i386
 endif
-# fix sparc -> sparc64
-ifeq ($(ARCH),sparc)
-	ifeq ($(shell uname -m),sun4u)
-		ARCH := sparc64
-	endif
+
+ifneq ($(strip $(filter __i486__,$(PREDEF))),)
+ARCH	:= i486
 endif
+
+ifneq ($(strip $(filter __i586__,$(PREDEF))),)
+ARCH	:= i586
+endif
+
+ifneq ($(strip $(filter __i686__ ,$(PREDEF))),)
+ARCH	:= i686
+endif
+
+ifneq ($(strip $(filter __amd64__ __amd64 __x86_64__ __x86_64, \
+	$(PREDEF))),)
+ARCH	:= x86_64
+endif
+
+ifneq ($(strip $(filter __arm__ __thumb__,$(PREDEF))),)
+
+ifneq ($(strip $(filter __ARM_ARCH_6__,$(PREDEF))),)
+ARCH	:= arm6
+else
+ARCH	:= arm
+endif
+
+endif
+
+ifneq ($(strip $(filter __mips__ __mips, $(PREDEF))),)
+ARCH	:= mips
+endif
+
+ifneq ($(strip $(filter __powerpc __powerpc__ __POWERPC__ __ppc__ \
+	_ARCH_PPC, $(PREDEF))),)
+ARCH	:= ppc
+endif
+
+ifneq ($(strip $(filter __ppc64__ _ARCH_PPC64 , $(PREDEF))),)
+ARCH	:= ppc64
+endif
+
+ifneq ($(strip $(filter __sparc__ __sparc __sparcv8 , $(PREDEF))),)
+
+ifneq ($(strip $(filter __sparcv9 __sparc_v9__ , $(PREDEF))),)
+ARCH	:= sparc64
+else
+ARCH	:= sparc
+endif
+
+endif
+
+endif
+endif
+
+
+ifeq ($(ARCH),)
+$(warning Could not detect ARCH)
+endif
+
 
 CFLAGS	+= -DARCH=\"$(ARCH)\"
 
@@ -468,11 +482,19 @@ ifneq ($(HAVE_SYSLOG),)
 CFLAGS  += -DHAVE_SYSLOG
 endif
 
+HAVE_INET_NTOP := 1
+
 CFLAGS  += -DHAVE_FORK
+
+ifneq ($(HAVE_INET_NTOP),)
 CFLAGS  += -DHAVE_INET_NTOP
+endif
 CFLAGS  += -DHAVE_PWD_H
 ifneq ($(OS),darwin)
 CFLAGS  += -DHAVE_POLL	# Darwin: poll() does not support devices
+HAVE_INET_PTON := 1
+endif
+ifneq ($(HAVE_INET_PTON),)
 CFLAGS  += -DHAVE_INET_PTON
 endif
 CFLAGS  += -DHAVE_SELECT -DHAVE_SELECT_H

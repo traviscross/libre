@@ -136,12 +136,12 @@ enum {
 
 
 struct sip_via {
-	struct pl transp;
 	struct pl sentby;
 	struct sa addr;
 	struct pl params;
 	struct pl branch;
 	struct pl val;
+	enum sip_transp tp;
 };
 
 struct sip_addr {
@@ -231,17 +231,23 @@ typedef void(sip_keepalive_h)(int err, void *arg);
 int  sip_alloc(struct sip **sipp, struct dnsc *dnsc, uint32_t ctsz,
 	       uint32_t stsz, uint32_t tcsz, const char *software,
 	       sip_exit_h *exith, void *arg);
-int  sip_transp_add(struct sip *sip, enum sip_transp tp,
-		    const struct sa *laddr, ...);
-void sip_transp_flush(struct sip *sip);
 void sip_close(struct sip *sip, bool force);
 int  sip_listen(struct sip_lsnr **lsnrp, struct sip *sip, bool req,
 		sip_msg_h *msgh, void *arg);
 int  sip_debug(struct re_printf *pf, const struct sip *sip);
 int  sip_send(struct sip *sip, void *sock, enum sip_transp tp,
 	      const struct sa *dst, struct mbuf *mb);
+
+
+/* transport */
+int  sip_transp_add(struct sip *sip, enum sip_transp tp,
+		    const struct sa *laddr, ...);
+void sip_transp_flush(struct sip *sip);
+bool sip_transp_isladdr(const struct sip *sip, enum sip_transp tp,
+			const struct sa *laddr);
 const char *sip_transp_name(enum sip_transp tp);
 const char *sip_transp_param(enum sip_transp tp);
+uint16_t sip_transp_port(enum sip_transp tp, uint16_t port);
 
 
 /* request */
@@ -295,10 +301,16 @@ int  sip_dialog_alloc(struct sip_dialog **dlgp,
 		      const char *routev[], uint32_t routec);
 int  sip_dialog_accept(struct sip_dialog **dlgp, const struct sip_msg *msg);
 int  sip_dialog_create(struct sip_dialog *dlg, const struct sip_msg *msg);
+int  sip_dialog_fork(struct sip_dialog **dlgp, struct sip_dialog *odlg,
+		     const struct sip_msg *msg);
 int  sip_dialog_update(struct sip_dialog *dlg, const struct sip_msg *msg);
 bool sip_dialog_rseq_valid(struct sip_dialog *dlg, const struct sip_msg *msg);
 const char *sip_dialog_callid(const struct sip_dialog *dlg);
+uint32_t sip_dialog_lseq(const struct sip_dialog *dlg);
+bool sip_dialog_established(const struct sip_dialog *dlg);
 bool sip_dialog_cmp(const struct sip_dialog *dlg, const struct sip_msg *msg);
+bool sip_dialog_cmp_half(const struct sip_dialog *dlg,
+			 const struct sip_msg *msg);
 
 
 /* msg */

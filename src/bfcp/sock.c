@@ -126,7 +126,7 @@ static void tcp_recv_handler(struct mbuf *mb, void *arg)
 
 		pos = conn->mbrx->pos;
 
-		err = bfcp_msg_decode(&msg, conn->mbrx);
+		err = bfcp_msg_decode(&msg, conn->mbrx, &conn->paddr);
 		if (err) {
 			if (err == ENODATA) {
 				conn->mbrx->pos = pos;
@@ -134,8 +134,6 @@ static void tcp_recv_handler(struct mbuf *mb, void *arg)
 			}
 			break;
 		}
-
-		bfcp_msg_set_src(msg, &conn->paddr);
 
 		ct = bfcp_ctrans_find(conn->bs, bfcp_msg_tid(msg));
 		if (ct) {
@@ -186,7 +184,7 @@ static void tcp_conn_handler(const struct sa *addr, void *arg)
 
 #ifdef USE_TLS
 		if (bs->transp == BFCP_TRANSP_TLS) {
-			if (tls_start_tcp(&conn->sc, bs->tls, conn->tc))
+			if (tls_start_tcp(&conn->sc, bs->tls, conn->tc, 0))
 				goto error;
 		}
 #endif
@@ -217,6 +215,18 @@ static struct bfcp_conn *findconn(const struct bfcp_sock *bs,
 }
 
 
+/**
+ * Listen on a BFCP socket
+ *
+ * @param sockp   Pointer to allocated BFCP socket object
+ * @param transp  BFCP transport
+ * @param tls     TLS context, used for secure transport (optional)
+ * @param laddr   Local network address (optional)
+ * @param msgh    BFCP message handler (optional)
+ * @param arg     Handler argument
+ *
+ * @return 0 if success, otherwise errorcode
+ */
 int bfcp_listen(struct bfcp_sock **sockp, enum bfcp_transp transp,
 		struct tls *tls, const struct sa *laddr,
 		bfcp_msg_h *msgh, void *arg)
@@ -308,7 +318,7 @@ int bfcp_send(struct bfcp_sock *sock, const struct sa *dst, struct mbuf *mb)
 			if (sock->transp == BFCP_TRANSP_TLS) {
 
 				err = tls_start_tcp(&conn->sc, sock->tls,
-						    conn->tc);
+						    conn->tc, 0);
 				if (err)
 					goto out;
 			}

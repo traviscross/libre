@@ -16,23 +16,37 @@
 #include "bfcp.h"
 
 
+/**
+ * Check if BFCP transport is reliable
+ *
+ * @param tp BFCP transport
+ *
+ * @return True if reliable, false if un-reliable
+ */
 bool bfcp_transp_reliable(enum bfcp_transp tp)
 {
 	switch (tp) {
 
-	case BFCP_TRANSP_TCP: return true;
-	case BFCP_TRANSP_TLS: return true;
-	default:              return false;
+	case BFCP_TRANSP_TCP:  return true;
+	case BFCP_TRANSP_TLS:  return true;
+	default:               return false;
 	}
 }
 
 
+/**
+ * Get the BFCP Transport protocol, suitable for SDP
+ *
+ * @param tp BFCP transport
+ *
+ * @return String with BFCP transport protocol
+ */
 const char *bfcp_transp_proto(enum bfcp_transp tp)
 {
 	switch (tp) {
 
-	case BFCP_TRANSP_TCP: return "TCP/BFCP";
-	case BFCP_TRANSP_TLS: return "TCP/TLS/BFCP";
-	default:              return "???";
+	case BFCP_TRANSP_TCP:  return "TCP/BFCP";
+	case BFCP_TRANSP_TLS:  return "TCP/TLS/BFCP";
+	default:               return "???";
 	}
 }

@@ -448,17 +448,6 @@ static void tcp_estab_handler(void *arg)
 	struct le *le;
 	int err;
 
-#ifdef USE_TLS
-	if (conn->sc) {
-		char cn[256];
-
-		err = tls_verify_cert(conn->sc, cn, sizeof(cn));
-
-		re_fprintf(stderr, "CN: '%s' (%sverified)\n",
-			   cn, err ? "not " : "");
-	}
-#endif
-
 	conn->established = true;
 
 	le = list_head(&conn->ql);
@@ -521,7 +510,7 @@ static void tcp_connect_handler(const struct sa *paddr, void *arg)
 
 #ifdef USE_TLS
 	if (transp->tls) {
-		err = tls_start_tcp(&conn->sc, transp->tls, conn->tc);
+		err = tls_start_tcp(&conn->sc, transp->tls, conn->tc, 0);
 		if (err)
 			goto out;
 	}
@@ -581,7 +570,7 @@ static int conn_send(struct sip_connqent **qentp, struct sip *sip, bool secure,
 			goto out;
 		}
 
-		err = tls_start_tcp(&conn->sc, transp->tls, conn->tc);
+		err = tls_start_tcp(&conn->sc, transp->tls, conn->tc, 0);
 		if (err)
 			goto out;
 	}
@@ -768,6 +757,31 @@ bool sip_transp_supported(struct sip *sip, enum sip_transp tp, int af)
 		return false;
 
 	return transp_find(sip, tp, af, NULL) != NULL;
+}
+
+
+bool sip_transp_isladdr(const struct sip *sip, enum sip_transp tp,
+			const struct sa *laddr)
+{
+	struct le *le;
+
+	if (!sip || !laddr)
+		return false;
+
+	for (le=sip->transpl.head; le; le=le->next) {
+
+		const struct sip_transport *transp = le->data;
+
+		if (tp != SIP_TRANSP_NONE && transp->tp != tp)
+			continue;
+
+		if (!sa_cmp(&transp->laddr, laddr, SA_ALL))
+			continue;
+
+		return true;
+	}
+
+	return false;
 }
 
 

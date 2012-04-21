@@ -108,6 +108,18 @@ int  str_dup(char **dst, const char *src);
 int  str_casecmp(const char *s1, const char *s2);
 size_t str_len(const char *s);
 
+/**
+ * Check if string is set
+ *
+ * @param s Zero-terminated string
+ *
+ * @return true if set, false if not set
+ */
+static inline bool str_isset(const char *s)
+{
+	return s && s[0] != '\0';
+}
+
 
 /* time */
 int  fmt_gmtime(struct re_printf *pf, void *ts);
@@ -121,5 +133,6 @@ void hexdump(FILE *f, const void *p, size_t len);
 typedef void (fmt_param_h)(const struct pl *name, const struct pl *val,
 			   void *arg);
 
+bool fmt_param_exists(const struct pl *pl, const char *pname);
 bool fmt_param_get(const struct pl *pl, const char *pname, struct pl *val);
 void fmt_param_apply(const struct pl *pl, fmt_param_h *ph, void *arg);

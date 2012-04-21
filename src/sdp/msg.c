@@ -227,6 +227,15 @@ static int version_decode(const struct pl *pl)
 }
 
 
+/**
+ * Decode an SDP message into an SDP Session
+ *
+ * @param sess  SDP Session
+ * @param mb    Memory buffer containing SDP message
+ * @param offer True if SDP offer, False if SDP answer
+ *
+ * @return 0 if success, otherwise errorcode
+ */
 int sdp_decode(struct sdp_session *sess, struct mbuf *mb, bool offer)
 {
 	struct sdp_media *m;
@@ -393,7 +402,7 @@ static int media_encode(const struct sdp_media *m, struct mbuf *mb, bool offer)
 
 		const struct sdp_format *fmt = le->data;
 
-		if (!fmt->sup || !str_len(fmt->name))
+		if (!fmt->sup || !str_isset(fmt->name))
 			continue;
 
 		err |= mbuf_printf(mb, "a=rtpmap:%s %s/%u",
@@ -404,7 +413,7 @@ static int media_encode(const struct sdp_media *m, struct mbuf *mb, bool offer)
 
 		err |= mbuf_printf(mb, "\r\n");
 
-		if (str_len(fmt->params))
+		if (str_isset(fmt->params))
 			err |= mbuf_printf(mb, "a=fmtp:%s %s\r\n",
 					   fmt->id, fmt->params);
 	}
@@ -428,6 +437,15 @@ static int media_encode(const struct sdp_media *m, struct mbuf *mb, bool offer)
 }
 
 
+/**
+ * Encode an SDP Session into a memory buffer
+ *
+ * @param mbp   Pointer to allocated memory buffer
+ * @param sess  SDP Session
+ * @param offer True if SDP Offer, False if SDP Answer
+ *
+ * @return 0 if success, otherwise errorcode
+ */
 int sdp_encode(struct mbuf **mbp, struct sdp_session *sess, bool offer)
 {
 	const int ipver = sa_af(&sess->laddr) == AF_INET ? 4 : 6;

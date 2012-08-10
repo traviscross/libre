@@ -178,13 +178,14 @@ static void qent_destructor(void *arg)
 }
 
 
-static int enqueue(struct tcp_conn *tc, struct mbuf *mb, size_t skip)
+static int enqueue(struct tcp_conn *tc, struct mbuf *mb)
 {
+	const size_t n = mbuf_get_left(mb);
 	struct tcp_qent *qe;
 	int err;
 
-	if (tc->txqsz >= tc->txqsz_max)
-		return ENOMEM;
+	if (tc->txqsz + n > tc->txqsz_max)
+		return ENOSPC;
 
 	if (!tc->sendq.head && !tc->sendh) {
 
@@ -202,10 +203,8 @@ static int enqueue(struct tcp_conn *tc, struct mbuf *mb, size_t skip)
 
 	mbuf_init(&qe->mb);
 
-	mb->pos += skip;
-	err = mbuf_write_mem(&qe->mb, mbuf_buf(mb), mbuf_get_left(mb));
+	err = mbuf_write_mem(&qe->mb, mbuf_buf(mb), n);
 	qe->mb.pos = 0;
-	mb->pos -= skip;
 
 	if (err)
 		mem_deref(qe);
@@ -288,8 +287,7 @@ static void tcp_recv_handler(int flags, void *arg)
 	/* check for any errors */
 	if (-1 == getsockopt(tc->fdc, SOL_SOCKET, SO_ERROR,
 			     BUF_CAST &err, &err_len)) {
-		DEBUG_WARNING("recv handler: getsockopt: (%s)\n",
-			      strerror(errno));
+		DEBUG_WARNING("recv handler: getsockopt: (%m)\n", errno);
 		return;
 	}
 
@@ -299,8 +297,7 @@ static void tcp_recv_handler(int flags, void *arg)
 	}
 #if 0
 	if (EINPROGRESS != err && EALREADY != err) {
-		DEBUG_WARNING("recv handler: Socket error (%s)\n",
-			      strerror(err));
+		DEBUG_WARNING("recv handler: Socket error (%m)\n", err);
 		return;
 	}
 #endif
@@ -347,8 +344,7 @@ static void tcp_recv_handler(int flags, void *arg)
 
 		err = fd_listen(tc->fdc, FD_READ, tcp_recv_handler, tc);
 		if (err) {
-			DEBUG_WARNING("recv handler: fd_listen(): %s\n",
-				      strerror(err));
+			DEBUG_WARNING("recv handler: fd_listen(): %m\n", err);
 			conn_close(tc, err);
 			return;
 		}
@@ -384,7 +380,7 @@ static void tcp_recv_handler(int flags, void *arg)
 		return;
 	}
 	else if (n < 0) {
-		DEBUG_WARNING("recv handler: recv(): %s\n", strerror(errno));
+		DEBUG_WARNING("recv handler: recv(): %m\n", errno);
 		goto out;
 	}
 
@@ -477,7 +473,7 @@ static void tcp_sockopt_set(int fd)
 
 	err = setsockopt(fd, SOL_SOCKET, SO_LINGER, BUF_CAST &dl, sizeof(dl));
 	if (err) {
-		DEBUG_WARNING("sockopt: SO_LINGER (%s)\n", strerror(err));
+		DEBUG_WARNING("sockopt: SO_LINGER (%m)\n", err);
 	}
 #else
 	(void)fd;
@@ -538,8 +534,7 @@ static void tcp_conn_handler(int flags, void *arg)
 
 	err = net_sockopt_blocking_set(ts->fdc, false);
 	if (err) {
-		DEBUG_WARNING("conn handler: nonblock set: %s\n",
-			      strerror(err));
+		DEBUG_WARNING("conn handler: nonblock set: %m\n", err);
 		(void)close(ts->fdc);
 		ts->fdc = -1;
 		return;
@@ -566,7 +561,7 @@ int tcp_sock_alloc(struct tcp_sock **tsp, const struct sa *local,
 		   tcp_conn_h *ch, void *arg)
 {
 	struct addrinfo hints, *res = NULL, *r;
-	char addr[NET_ADDRSTRLEN] = "";
+	char addr[64] = "";
 	char serv[6] = "0";
 	struct tcp_sock *ts = NULL;
 	int error, err;
@@ -582,10 +577,9 @@ int tcp_sock_alloc(struct tcp_sock **tsp, const struct sa *local,
 	ts->fdc = -1;
 
 	if (local) {
-		err = sa_ntop(local, addr, sizeof(addr));
+		(void)re_snprintf(addr, sizeof(addr), "%H",
+				  sa_print_addr, local);
 		(void)re_snprintf(serv, sizeof(serv), "%u", sa_port(local));
-		if (err)
-			goto out;
 	}
 
 	memset(&hints, 0, sizeof(hints));
@@ -624,8 +618,7 @@ int tcp_sock_alloc(struct tcp_sock **tsp, const struct sa *local,
 
 		err = net_sockopt_blocking_set(fd, false);
 		if (err) {
-			DEBUG_WARNING("listen: nonblock set: %s\n",
-				      strerror(err));
+			DEBUG_WARNING("listen: nonblock set: %m\n", err);
 			(void)close(fd);
 			continue;
 		}
@@ -667,7 +660,7 @@ int tcp_sock_alloc(struct tcp_sock **tsp, const struct sa *local,
 int tcp_sock_bind(struct tcp_sock *ts, const struct sa *local)
 {
 	struct addrinfo hints, *res = NULL, *r;
-	char addr[NET_ADDRSTRLEN] = "";
+	char addr[64] = "";
 	char serv[NI_MAXSERV] = "0";
 	int error, err;
 
@@ -675,10 +668,9 @@ int tcp_sock_bind(struct tcp_sock *ts, const struct sa *local)
 		return EINVAL;
 
 	if (local) {
-		err = sa_ntop(local, addr, sizeof(addr));
+		(void)re_snprintf(addr, sizeof(addr), "%H",
+				  sa_print_addr, local);
 		(void)re_snprintf(serv, sizeof(serv), "%u", sa_port(local));
-		if (err)
-			return err;
 	}
 
 	memset(&hints, 0, sizeof(hints));
@@ -704,8 +696,8 @@ int tcp_sock_bind(struct tcp_sock *ts, const struct sa *local)
 
 		if (bind(ts->fd, r->ai_addr, SIZ_CAST r->ai_addrlen) < 0) {
 			err = errno;
-			DEBUG_WARNING("sock_bind: bind: %s (af=%d, %J)\n",
-				      strerror(err), r->ai_family, local);
+			DEBUG_WARNING("sock_bind: bind: %m (af=%d, %J)\n",
+				      err, r->ai_family, local);
 			continue;
 		}
 
@@ -742,7 +734,7 @@ int tcp_sock_listen(struct tcp_sock *ts, int backlog)
 
 	if (listen(ts->fd, backlog) < 0) {
 		err = errno;
-		DEBUG_WARNING("sock_listen: listen(): %s\n", strerror(err));
+		DEBUG_WARNING("sock_listen: listen(): %m\n", err);
 		return err;
 	}
 
@@ -782,7 +774,7 @@ int tcp_accept(struct tcp_conn **tcp, struct tcp_sock *ts, tcp_estab_h *eh,
 	err = fd_listen(tc->fdc, FD_READ | FD_WRITE | FD_EXCEPT,
 			tcp_recv_handler, tc);
 	if (err) {
-		DEBUG_WARNING("accept: fd_listen(): %s\n", strerror(err));
+		DEBUG_WARNING("accept: fd_listen(): %m\n", err);
 	}
 
 	if (err)
@@ -829,7 +821,7 @@ int tcp_conn_alloc(struct tcp_conn **tcp,
 {
 	struct tcp_conn *tc;
 	struct addrinfo hints, *res = NULL, *r;
-	char addr[NET_ADDRSTRLEN];
+	char addr[64];
 	char serv[NI_MAXSERV] = "0";
 	int error, err;
 
@@ -847,10 +839,9 @@ int tcp_conn_alloc(struct tcp_conn **tcp,
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	err = sa_ntop(peer, addr, sizeof(addr));
+	(void)re_snprintf(addr, sizeof(addr), "%H",
+			  sa_print_addr, peer);
 	(void)re_snprintf(serv, sizeof(serv), "%u", sa_port(peer));
-	if (err)
-		goto out;
 
 	error = getaddrinfo(addr, serv, &hints, &res);
 	if (error) {
@@ -872,8 +863,7 @@ int tcp_conn_alloc(struct tcp_conn **tcp,
 
 		err = net_sockopt_blocking_set(tc->fdc, false);
 		if (err) {
-			DEBUG_WARNING("connect: nonblock set: %s\n",
-				      strerror(err));
+			DEBUG_WARNING("connect: nonblock set: %m\n", err);
 			(void)close(tc->fdc);
 			tc->fdc = -1;
 			continue;
@@ -908,7 +898,7 @@ int tcp_conn_alloc(struct tcp_conn **tcp,
 int tcp_conn_bind(struct tcp_conn *tc, const struct sa *local)
 {
 	struct addrinfo hints, *res = NULL, *r;
-	char addr[NET_ADDRSTRLEN] = "";
+	char addr[64] = "";
 	char serv[NI_MAXSERV] = "0";
 	int error, err;
 
@@ -916,10 +906,9 @@ int tcp_conn_bind(struct tcp_conn *tc, const struct sa *local)
 		return EINVAL;
 
 	if (local) {
-		err = sa_ntop(local, addr, sizeof(addr));
+		(void)re_snprintf(addr, sizeof(addr), "%H",
+				  sa_print_addr, local);
 		(void)re_snprintf(serv, sizeof(serv), "%u", sa_port(local));
-		if (err)
-			return err;
 	}
 
 	memset(&hints, 0, sizeof(hints));
@@ -950,8 +939,8 @@ int tcp_conn_bind(struct tcp_conn *tc, const struct sa *local)
 			}
 
 			err = errno;
-			DEBUG_WARNING("conn_bind: bind(): %J: %s\n",
-				      local, strerror(err));
+			DEBUG_WARNING("conn_bind: bind(): %J: %m\n",
+				      local, err);
 			continue;
 		}
 
@@ -964,8 +953,7 @@ int tcp_conn_bind(struct tcp_conn *tc, const struct sa *local)
 	freeaddrinfo(res);
 
 	if (err) {
-		DEBUG_WARNING("conn_bind failed: %J (%s)\n", local,
-			      strerror(err));
+		DEBUG_WARNING("conn_bind failed: %J (%m)\n", local, err);
 	}
 
 	return err;
@@ -983,9 +971,9 @@ int tcp_conn_bind(struct tcp_conn *tc, const struct sa *local)
 int tcp_conn_connect(struct tcp_conn *tc, const struct sa *peer)
 {
 	struct addrinfo hints, *res = NULL, *r;
-	char addr[NET_ADDRSTRLEN];
+	char addr[64];
 	char serv[NI_MAXSERV];
-	int error, err;
+	int error, err = 0;
 
 	if (!tc || !sa_isset(peer, SA_ALL))
 		return EINVAL;
@@ -1004,10 +992,9 @@ int tcp_conn_connect(struct tcp_conn *tc, const struct sa *peer)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	err = sa_ntop(peer, addr, sizeof(addr));
+	(void)re_snprintf(addr, sizeof(addr), "%H",
+			  sa_print_addr, peer);
 	(void)re_snprintf(serv, sizeof(serv), "%u", sa_port(peer));
-	if (err)
-		return err;
 
 	error = getaddrinfo(addr, serv, &hints, &res);
 	if (error) {
@@ -1045,8 +1032,8 @@ int tcp_conn_connect(struct tcp_conn *tc, const struct sa *peer)
 			if (EINPROGRESS != errno && EALREADY != errno) {
 				tc->fdc = -1;
 				err = errno;
-				DEBUG_INFO("connect: connect() %J: %s\n",
-					   peer, strerror(err));
+				DEBUG_INFO("connect: connect() %J: %m\n",
+					   peer, err);
 			}
 		}
 	}
@@ -1093,22 +1080,21 @@ static int tcp_send_internal(struct tcp_conn *tc, struct mbuf *mb,
 	}
 
 	if (tc->sendq.head)
-		return enqueue(tc, mb, 0);
+		return enqueue(tc, mb);
 
 	n = send(tc->fdc, BUF_CAST mbuf_buf(mb), mb->end - mb->pos, flags);
 	if (n < 0) {
 
 		if (EAGAIN == errno)
-			return enqueue(tc, mb, 0);
+			return enqueue(tc, mb);
 
 #ifdef WIN32
 		if (WSAEWOULDBLOCK == WSAGetLastError())
-			return enqueue(tc, mb, 0);
+			return enqueue(tc, mb);
 #endif
 		err = errno;
 
-		DEBUG_WARNING("send: write(): %s (fdc=%d)\n", strerror(err),
-			      tc->fdc);
+		DEBUG_WARNING("send: write(): %m (fdc=%d)\n", err, tc->fdc);
 
 #ifdef WIN32
 		DEBUG_WARNING("WIN32 error: %d\n", WSAGetLastError());
@@ -1117,8 +1103,14 @@ static int tcp_send_internal(struct tcp_conn *tc, struct mbuf *mb,
 		return err;
 	}
 
-	if ((size_t)n < mb->end - mb->pos)
-		return enqueue(tc, mb, n);
+	if ((size_t)n < mb->end - mb->pos) {
+
+		mb->pos += n;
+		err = enqueue(tc, mb);
+		mb->pos -= n;
+
+		return err;
+	}
 
 	return 0;
 }
@@ -1222,8 +1214,7 @@ int tcp_sock_local_get(const struct tcp_sock *ts, struct sa *local)
 	sa_init(local, AF_UNSPEC);
 
 	if (getsockname(ts->fd, &local->u.sa, &local->len) < 0) {
-		DEBUG_WARNING("local get: getsockname(): %s\n",
-			      strerror(errno));
+		DEBUG_WARNING("local get: getsockname(): %m\n", errno);
 		return errno;
 	}
 
@@ -1247,8 +1238,7 @@ int tcp_conn_local_get(const struct tcp_conn *tc, struct sa *local)
 	sa_init(local, AF_UNSPEC);
 
 	if (getsockname(tc->fdc, &local->u.sa, &local->len) < 0) {
-		DEBUG_WARNING("conn local get: getsockname(): %s\n",
-			      strerror(errno));
+		DEBUG_WARNING("conn local get: getsockname(): %m\n", errno);
 		return errno;
 	}
 
@@ -1272,8 +1262,7 @@ int tcp_conn_peer_get(const struct tcp_conn *tc, struct sa *peer)
 	sa_init(peer, AF_UNSPEC);
 
 	if (getpeername(tc->fdc, &peer->u.sa, &peer->len) < 0) {
-		DEBUG_WARNING("conn peer get: getpeername(): %s\n",
-			      strerror(errno));
+		DEBUG_WARNING("conn peer get: getpeername(): %m\n", errno);
 		return errno;
 	}
 
@@ -1321,6 +1310,19 @@ void tcp_conn_txqsz_set(struct tcp_conn *tc, size_t txqsz)
 int tcp_conn_fd(const struct tcp_conn *tc)
 {
 	return tc ? tc->fdc : -1;
+}
+
+
+/**
+ * Get the current length of the transmit queue on a TCP Connection
+ *
+ * @param tc TCP-Connection
+ *
+ * @return Current transmit queue length, or 0 if errors
+ */
+size_t tcp_conn_txqsz(const struct tcp_conn *tc)
+{
+	return tc ? tc->txqsz : 0;
 }
 
 

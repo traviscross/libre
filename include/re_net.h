@@ -66,7 +66,7 @@ int net_sockopt_reuse_set(int fd, bool reuse);
 /* Net interface (if.c) */
 
 /**
- * Defines the interface address handled - called once per interface
+ * Defines the interface address handler - called once per interface
  *
  * @param ifname Name of the interface
  * @param sa     IP address of the interface
@@ -83,6 +83,7 @@ int net_if_getaddr4(const char *ifname, int af, struct sa *ip);
 int net_if_list(net_ifaddr_h *ifh, void *arg);
 int net_if_apply(net_ifaddr_h *ifh, void *arg);
 int net_if_debug(struct re_printf *pf, void *unused);
+int net_if_getlinklocal(const char *ifname, int af, struct sa *ip);
 
 
 /* Net interface (ifaddrs.c) */

@@ -223,6 +223,7 @@ void sdp_media_align_formats(struct sdp_media *m, bool offer)
 
 		lfmt = lle->data;
 
+		lfmt->rparams = mem_deref(lfmt->rparams);
 		lfmt->sup = false;
 	}
 
@@ -242,6 +243,9 @@ void sdp_media_align_formats(struct sdp_media *m, bool offer)
 			rfmt->sup = false;
 			continue;
 		}
+
+		mem_deref(lfmt->rparams);
+		lfmt->rparams = mem_ref(rfmt->params);
 
 		lfmt->sup = true;
 		rfmt->sup = true;
@@ -282,6 +286,24 @@ void sdp_media_align_formats(struct sdp_media *m, bool offer)
 			}
 		}
 	}
+}
+
+
+/**
+ * Set SDP Media line encode handler
+ *
+ * @param m    SDP Media line
+ * @param ench Encode handler
+ * @param arg  Encode handler argument
+ */
+void sdp_media_set_encode_handler(struct sdp_media *m, sdp_media_enc_h *ench,
+				  void *arg)
+{
+	if (!m)
+		return;
+
+	m->ench = ench;
+	m->arg  = arg;
 }
 
 

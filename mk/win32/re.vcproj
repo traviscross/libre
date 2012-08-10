@@ -204,6 +204,9 @@
 					RelativePath="..\..\src\fmt\str.c">
 				</File>
 				<File
+					RelativePath="..\..\src\fmt\str_error.c">
+				</File>
+				<File
 					RelativePath="..\..\src\fmt\time.c">
 				</File>
 			</Filter>
@@ -473,6 +476,9 @@
 				Filter="">
 				<File
 					RelativePath="..\..\src\sa\ntop.c">
+				</File>
+				<File
+					RelativePath="..\..\src\sa\printaddr.c">
 				</File>
 				<File
 					RelativePath="..\..\src\sa\pton.c">
@@ -775,6 +781,9 @@
 				</File>
 				<File
 					RelativePath="..\..\src\sys\endian.c">
+				</File>
+				<File
+					RelativePath="..\..\src\sys\fs.c">
 				</File>
 				<File
 					RelativePath="..\..\src\sys\rand.c">

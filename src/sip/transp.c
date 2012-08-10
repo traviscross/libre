@@ -1,5 +1,5 @@
 /**
- * @file transp.c  SIP Transport
+ * @file sip/transp.c  SIP Transport
  *
  * Copyright (C) 2010 Creytiv.com
  */
@@ -305,8 +305,7 @@ static void udp_recv_handler(const struct sa *src, struct mbuf *mb, void *arg)
 
 	err = sip_msg_decode(&msg, mb);
 	if (err) {
-		(void)re_fprintf(stderr, "sip: msg decode err: %s\n",
-				 strerror(err));
+		(void)re_fprintf(stderr, "sip: msg decode err: %m\n", err);
 		return;
 	}
 
@@ -614,6 +613,16 @@ int sip_transp_init(struct sip *sip, uint32_t sz)
 }
 
 
+/**
+ * Add a SIP transport
+ *
+ * @param sip   SIP stack instance
+ * @param tp    SIP Transport
+ * @param laddr Local network address
+ * @param ...   Optional transport parameters such as TLS context
+ *
+ * @return 0 if success, otherwise errorcode
+ */
 int sip_transp_add(struct sip *sip, enum sip_transp tp,
 		   const struct sa *laddr, ...)
 {
@@ -680,6 +689,11 @@ int sip_transp_add(struct sip *sip, enum sip_transp tp,
 }
 
 
+/**
+ * Flush all transports of a SIP stack instance
+ *
+ * @param sip SIP stack instance
+ */
 void sip_transp_flush(struct sip *sip)
 {
 	if (!sip)
@@ -766,6 +780,15 @@ bool sip_transp_supported(struct sip *sip, enum sip_transp tp, int af)
 }
 
 
+/**
+ * Check if network address is part of SIP transports
+ *
+ * @param sip   SIP stack instance
+ * @param tp    SIP transport
+ * @param laddr Local network address to check
+ *
+ * @return True if part of SIP transports, otherwise false
+ */
 bool sip_transp_isladdr(const struct sip *sip, enum sip_transp tp,
 			const struct sa *laddr)
 {
@@ -791,6 +814,13 @@ bool sip_transp_isladdr(const struct sip *sip, enum sip_transp tp,
 }
 
 
+/**
+ * Get the name of a given SIP Transport
+ *
+ * @param tp SIP Transport
+ *
+ * @return Name of the corresponding SIP Transport
+ */
 const char *sip_transp_name(enum sip_transp tp)
 {
 	switch (tp) {
@@ -815,6 +845,13 @@ const char *sip_transp_srvid(enum sip_transp tp)
 }
 
 
+/**
+ * Get the transport parameters for a given SIP Transport
+ *
+ * @param tp SIP Transport
+ *
+ * @return Transport parameters of the corresponding SIP Transport
+ */
 const char *sip_transp_param(enum sip_transp tp)
 {
 	switch (tp) {
@@ -839,6 +876,14 @@ bool sip_transp_reliable(enum sip_transp tp)
 }
 
 
+/**
+ * Get the default port number for a given SIP Transport
+ *
+ * @param tp   SIP Transport
+ * @param port Port number
+ *
+ * @return Corresponding port number
+ */
 uint16_t sip_transp_port(enum sip_transp tp, uint16_t port)
 {
 	if (port)
@@ -878,6 +923,13 @@ int sip_transp_debug(struct re_printf *pf, const struct sip *sip)
 }
 
 
+/**
+ * Get the TCP Connection from a SIP Message
+ *
+ * @param msg SIP Message
+ *
+ * @return TCP Connection if reliable transport, otherwise NULL
+ */
 struct tcp_conn *sip_msg_tcpconn(const struct sip_msg *msg)
 {
 	if (!msg || !msg->sock)

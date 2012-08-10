@@ -1,5 +1,5 @@
 /**
- * @file print.c Formatted printing
+ * @file fmt/print.c Formatted printing
  *
  * Copyright (C) 2010 Creytiv.com
  */
@@ -147,6 +147,7 @@ static size_t local_ftoa(char *buf, double n, size_t dp)
  *   %J  (struct sa *)           Socket address and port - like 1.2.3.4:1234
  *   %H  (re_printf_h *, void *) Print handler with argument
  *   %v  (char *fmt, va_list *)  Variable argument list
+ *   %m  (int)                   Describe an error code
  * </pre>
  *
  * Reserved for the future:
@@ -158,7 +159,7 @@ static size_t local_ftoa(char *buf, double n, size_t dp)
 int re_vhprintf(const char *fmt, va_list ap, re_vprintf_h *vph, void *arg)
 {
 	uint8_t base, *bptr;
-	char pch, ch, num[NUM_SIZE], addr[64];
+	char pch, ch, num[NUM_SIZE], addr[64], msg[256];
 	enum length_modifier lenmod = LENMOD_NONE;
 	struct re_printf pf;
 	bool fm = false, plr = false;
@@ -309,6 +310,12 @@ int re_vhprintf(const char *fmt, va_list ap, re_vprintf_h *vph, void *arg)
 		case 'l':
 			++lenmod;
 			fm = true;
+			break;
+
+		case 'm':
+			str = str_error(va_arg(ap, int), msg, sizeof(msg));
+			err |= write_padded(str, str_len(str), pad,
+					    ' ', plr, NULL, vph, arg);
 			break;
 
 		case 'p':

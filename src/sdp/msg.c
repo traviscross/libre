@@ -3,7 +3,6 @@
  *
  * Copyright (C) 2010 Creytiv.com
  */
-#include <string.h>
 #include <re_types.h>
 #include <re_fmt.h>
 #include <re_mem.h>
@@ -299,8 +298,7 @@ int sdp_decode(struct sdp_session *sess, struct mbuf *mb, bool offer)
 
 #if 0
 			if (err)
-				re_printf("*** %c='%r': %s\n", type, &val,
-					  strerror(err));
+				re_printf("** %c='%r': %m\n", type, &val, err);
 #endif
 
 			type = 0;
@@ -416,6 +414,8 @@ static int media_encode(const struct sdp_media *m, struct mbuf *mb, bool offer)
 		if (str_isset(fmt->params))
 			err |= mbuf_printf(mb, "a=fmtp:%s %s\r\n",
 					   fmt->id, fmt->params);
+		if (fmt->ench)
+			err |= fmt->ench(mb, fmt, offer, fmt->data);
 	}
 
 	if (sa_isset(&m->laddr_rtcp, SA_ALL))
@@ -432,6 +432,9 @@ static int media_encode(const struct sdp_media *m, struct mbuf *mb, bool offer)
 
 	for (le = m->lattrl.head; le; le = le->next)
 		err |= mbuf_printf(mb, "%H", sdp_attr_print, le->data);
+
+	if (m->ench)
+		err |= m->ench(mb, offer, m->arg);
 
 	return err;
 }

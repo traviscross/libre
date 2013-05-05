@@ -64,6 +64,7 @@ int      mbuf_vprintf(struct mbuf *mb, const char *fmt, va_list ap);
 int      mbuf_printf(struct mbuf *mb, const char *fmt, ...);
 int      mbuf_write_pl_skip(struct mbuf *mb, const struct pl *pl,
 			    const struct pl *skip);
+int      mbuf_fill(struct mbuf *mb, uint8_t c, size_t n);
 int      mbuf_debug(struct re_printf *pf, const struct mbuf *mb);
 
 
@@ -89,7 +90,7 @@ static inline uint8_t *mbuf_buf(const struct mbuf *mb)
  */
 static inline size_t mbuf_get_left(const struct mbuf *mb)
 {
-	return mb ? (mb->end - mb->pos) : 0;
+	return (mb && (mb->end > mb->pos)) ? (mb->end - mb->pos) : 0;
 }
 
 
@@ -102,7 +103,7 @@ static inline size_t mbuf_get_left(const struct mbuf *mb)
  */
 static inline size_t mbuf_get_space(const struct mbuf *mb)
 {
-	return mb ? (mb->size - mb->pos) : 0;
+	return (mb && (mb->size > mb->pos)) ? (mb->size - mb->pos) : 0;
 }
 
 

@@ -25,6 +25,7 @@
 #include <re_dbg.h>
 
 
+/* NOTE: shadow struct defined in tls_*.c */
 struct tls_conn {
 	SSL *ssl;
 };
@@ -248,6 +249,35 @@ int tls_verify_cert(struct tls_conn *tc, char *cn, size_t cn_size)
 		DEBUG_WARNING("Certificate doesn't verify\n");
 		return EPROTO;
 	}
+
+	return 0;
+}
+
+
+static const EVP_MD *type2evp(const char *type)
+{
+	if (0 == str_casecmp(type, "SHA-1"))
+		return EVP_sha1();
+	else
+		return NULL;
+}
+
+
+int tls_get_remote_fingerprint(const struct tls_conn *tc, const char *type,
+			       struct tls_fingerprint *fp)
+{
+	X509 *x;
+
+	if (!tc || !fp)
+		return EINVAL;
+
+	x = SSL_get_peer_certificate(tc->ssl);
+	if (!x)
+		return EPROTO;
+
+	fp->len = sizeof(fp->md);
+	if (1 != X509_digest(x, type2evp(type), fp->md, &fp->len))
+		return ENOENT;
 
 	return 0;
 }

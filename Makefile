@@ -7,10 +7,10 @@
 # Master version number
 VER_MAJOR := 0
 VER_MINOR := 4
-VER_PATCH := 3
+VER_PATCH := 4
 
 PROJECT   := re
-VERSION   := 0.4.3
+VERSION   := 0.4.4
 
 MK	:= mk/re.mk
 
@@ -18,7 +18,7 @@ include $(MK)
 
 # List of modules
 MODULES += sip sipevent sipreg sipsess
-MODULES += uri httpauth
+MODULES += uri http httpauth
 MODULES += stun turn ice
 MODULES += natbd
 MODULES += rtp sdp jbuf telev

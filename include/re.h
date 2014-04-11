@@ -15,16 +15,19 @@ extern "C" {
 #include "re_types.h"
 #include "re_fmt.h"
 #include "re_mbuf.h"
+#include "re_msg.h"
 #include "re_list.h"
 #include "re_sa.h"
 
 /* Library modules */
+#include "re_aes.h"
 #include "re_base64.h"
 #include "re_bfcp.h"
 #include "re_conf.h"
 #include "re_crc32.h"
 #include "re_dns.h"
 #include "re_hash.h"
+#include "re_hmac.h"
 #include "re_http.h"
 #include "re_httpauth.h"
 #include "re_ice.h"
@@ -52,6 +55,7 @@ extern "C" {
 #include "re_tls.h"
 #include "re_turn.h"
 #include "re_udp.h"
+#include "re_websock.h"
 
 #ifdef __cplusplus
 }

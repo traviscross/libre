@@ -19,6 +19,7 @@ Modules:
 
   name:     status:       description:
 
+* aes       unstable      AES (Advanced Encryption Standard)
 * base64    testing       Base-64 encoding/decoding functions
 * bfcp      unstable      The Binary Floor Control Protocol (BFCP)
 * conf      testing       Configuration file parser
@@ -40,6 +41,7 @@ Modules:
 * mem       stable        Memory referencing
 * mod       testing       Run-time module loading
 * mqueue    testing       Thread-safe message queue
+* msg       unstable      Generic message component library
 * natbd     unstable      NAT Behavior Discovery using STUN
 * net       unstable      Networking routines
 * rtp       testing       Real-time Transport Protocol
@@ -59,6 +61,7 @@ Modules:
 * turn      testing       Obtaining Relay Addresses from STUN (TURN)
 * udp       testing       UDP transport
 * uri       testing       Generic URI library
+* websock   unstable      WebSocket Client and Server
 
 legend:
  "stable"       - Code complete; Stable code and stable API
@@ -109,6 +112,7 @@ Features:
 * RFC 5780 - NAT Behaviour Discovery Using STUN
 * RFC 6026 - Correct Transaction Handling for 2xx Resp. to SIP INVITE Requests
 * RFC 6156 - TURN Extension for IPv6
+* RFC 6455 - The WebSocket Protocol
 * Symmetric RTP
 * ITU-T G.711 Appendix I and Appendix II
 * draft-ietf-bfcpbis-rfc4582bis-08

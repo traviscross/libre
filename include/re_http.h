@@ -81,7 +81,7 @@ struct http_msg {
 	uint16_t scode;
 	struct pl reason;
 	struct list hdrl;
-	struct pl ctype;
+	struct msg_ctype ctyp;
 	struct mbuf *mb;
 	uint32_t clen;
 };
@@ -110,6 +110,22 @@ bool http_msg_xhdr_has_value(const struct http_msg *msg, const char *name,
 int  http_msg_print(struct re_printf *pf, const struct http_msg *msg);
 
 
+/* Client */
+struct http_cli;
+struct http_req;
+struct dnsc;
+
+typedef void (http_resp_h)(int err, const struct http_msg *msg, void *arg);
+typedef void (http_data_h)(struct mbuf *mb, void *arg);
+
+int http_client_alloc(struct http_cli **clip, struct dnsc *dnsc);
+int http_request(struct http_req **reqp, struct http_cli *cli, const char *met,
+		 const char *uri, http_resp_h *resph, http_data_h *datah,
+		 void *arg, const char *fmt, ...);
+struct tcp_conn *http_req_tcp(struct http_req *req);
+struct tls_conn *http_req_tls(struct http_req *req);
+
+
 /* Server */
 struct http_sock;
 struct http_conn;
@@ -121,6 +137,7 @@ int  http_listen(struct http_sock **sockp, const struct sa *laddr,
 		 http_req_h *reqh, void *arg);
 int  https_listen(struct http_sock **sockp, const struct sa *laddr,
 		  const char *cert, http_req_h *reqh, void *arg);
+struct tcp_sock *http_sock_tcp(struct http_sock *sock);
 const struct sa *http_conn_peer(const struct http_conn *conn);
 struct tcp_conn *http_conn_tcp(struct http_conn *conn);
 struct tls_conn *http_conn_tls(struct http_conn *conn);

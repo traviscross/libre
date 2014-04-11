@@ -13,6 +13,7 @@
 #include <re_tmr.h>
 #include <re_tcp.h>
 #include <re_tls.h>
+#include <re_msg.h>
 #include <re_http.h>
 
 
@@ -315,6 +316,19 @@ int https_listen(struct http_sock **sockp, const struct sa *laddr,
 		*sockp = sock;
 
 	return err;
+}
+
+
+/**
+ * Get the TCP socket of an HTTP socket
+ *
+ * @param sock HTTP socket
+ *
+ * @return TCP socket
+ */
+struct tcp_sock *http_sock_tcp(struct http_sock *sock)
+{
+	return sock ? sock->ts : NULL;
 }
 
 

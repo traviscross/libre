@@ -7,10 +7,10 @@
 # Master version number
 VER_MAJOR := 0
 VER_MINOR := 4
-VER_PATCH := 7
+VER_PATCH := 8
 
 PROJECT   := re
-VERSION   := 0.4.7
+VERSION   := 0.4.8
 
 MK	:= mk/re.mk
 
@@ -18,7 +18,7 @@ include $(MK)
 
 # List of modules
 MODULES += sip sipevent sipreg sipsess
-MODULES += uri http httpauth
+MODULES += uri http httpauth msg websock
 MODULES += stun turn ice
 MODULES += natbd
 MODULES += rtp sdp jbuf telev
@@ -29,6 +29,7 @@ MODULES += list mbuf hash
 MODULES += fmt tmr main mem dbg sys lock mqueue
 MODULES += mod conf
 MODULES += bfcp
+MODULES += aes
 
 INSTALL := install
 ifeq ($(DESTDIR),)

@@ -30,7 +30,7 @@ Modules:
 * hash      testing       Hashmap table
 * hmac      testing       HMAC: Keyed-Hashing for Message Authentication
 * http      unstable      HTTP parser (RFC 2616)
-* httpauth  unstable      HTTP-based Authentication (RFC 2617)
+* httpauth  testing       HTTP-based Authentication (RFC 2617)
 * ice       unstable      Interactive Connectivity Establishment (ICE)
 * jbuf      testing       Jitter buffer
 * list      stable        Sortable doubly-linked list handling
@@ -43,16 +43,17 @@ Modules:
 * mqueue    testing       Thread-safe message queue
 * msg       unstable      Generic message component library
 * natbd     unstable      NAT Behavior Discovery using STUN
-* net       unstable      Networking routines
+* net       testing       Networking routines
 * rtp       testing       Real-time Transport Protocol
 * sa        stable        Socket Address functions
-* sdp       unstable      Session Description Protocol
+* sdp       testing       Session Description Protocol
 * sha       testing       Secure Hash Standard, NIST, FIPS PUB 180-1
-* sip       unstable      Core SIP library
-* sipevent  unstable      SIP Event framework
+* sip       testing       Core SIP library
+* sipevent  testing       SIP Event framework
 * sipreg    testing       SIP register client
-* sipsess   unstable      SIP Sessions
-* stun      unstable      Session Traversal Utilities for NAT (STUN)
+* sipsess   testing       SIP Sessions
+* srtp      unstable      Secure Real-time Transport Protocol (SRTP)
+* stun      testing       Session Traversal Utilities for NAT (STUN)
 * sys       testing       System information
 * tcp       testing       TCP transport
 * telev     testing       Telephony Events (RFC 4733)
@@ -93,6 +94,7 @@ Features:
 * RFC 3556 - SDP Bandwidth Modifiers for RTCP Bandwidth
 * RFC 3581 - An Extension to SIP for Symmetric Response Routing
 * RFC 3605 - RTCP attribute in SDP
+* RFC 3711 - The Secure Real-time Transport Protocol (SRTP)
 * RFC 3969 - The IANA URI Parameter Registry for SIP
 * RFC 3994 - Indication of Message Composition for Instant Messaging
 * RFC 4346 - The TLS Protocol Version 1.1
@@ -112,6 +114,7 @@ Features:
 * RFC 5780 - NAT Behaviour Discovery Using STUN
 * RFC 6026 - Correct Transaction Handling for 2xx Resp. to SIP INVITE Requests
 * RFC 6156 - TURN Extension for IPv6
+* RFC 6188 - The Use of AES-192 and AES-256 in Secure RTP
 * RFC 6455 - The WebSocket Protocol
 * Symmetric RTP
 * ITU-T G.711 Appendix I and Appendix II

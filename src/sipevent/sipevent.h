@@ -31,6 +31,7 @@ struct sipnot {
 	char *event;
 	char *id;
 	char *cuser;
+	char *pub_gruu;
 	char *hdrs;
 	char *ctype;
 	sipnot_close_h *closeh;
@@ -68,6 +69,7 @@ struct sipsub {
 	char *event;
 	char *id;
 	char *cuser;
+	char *pub_gruu;
 	char *hdrs;
 	char *refer_hdrs;
 	sipsub_fork_h *forkh;

@@ -144,6 +144,7 @@ static void destructor(void *arg)
 	mem_deref(sess->dlg);
 	mem_deref(sess->auth);
 	mem_deref(sess->cuser);
+	mem_deref(sess->pub_gruu);
 	mem_deref(sess->ctype);
 	mem_deref(sess->close_hdrs);
 	mem_deref(sess->hdrs);
@@ -155,7 +156,8 @@ static void destructor(void *arg)
 
 
 int sipsess_alloc(struct sipsess **sessp, struct sipsess_sock *sock,
-		  const char *cuser, const char *ctype, struct mbuf *desc,
+		  const char *cuser, const char *pub_gruu, 
+		  const char *ctype, struct mbuf *desc,
 		  sip_auth_h *authh, void *aarg, bool aref,
 		  sipsess_offer_h *offerh, sipsess_answer_h *answerh,
 		  sipsess_progr_h *progrh, sipsess_estab_h *estabh,
@@ -176,6 +178,12 @@ int sipsess_alloc(struct sipsess **sessp, struct sipsess_sock *sock,
 	err = str_dup(&sess->cuser, cuser);
 	if (err)
 		goto out;
+
+	if (pub_gruu) {
+		err = str_dup(&sess->pub_gruu, pub_gruu);
+		if (err)
+			goto out;
+	}
 
 	err = str_dup(&sess->ctype, ctype);
 	if (err)

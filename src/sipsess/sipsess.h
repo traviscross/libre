@@ -19,6 +19,7 @@ struct sipsess {
 	struct sip_auth *auth;
 	struct sip *sip;
 	char *cuser;
+	char *pub_gruu;
 	char *ctype;
 	char *close_hdrs;
 	struct mbuf *hdrs;
@@ -65,7 +66,8 @@ struct sipsess_request {
 
 
 int  sipsess_alloc(struct sipsess **sessp, struct sipsess_sock *sock,
-		   const char *cuser, const char *ctype, struct mbuf *desc,
+		   const char *cuser, const char *pub_gruu, 
+		   const char *ctype, struct mbuf *desc,
 		   sip_auth_h *authh, void *aarg, bool aref,
 		   sipsess_offer_h *offerh, sipsess_answer_h *answerh,
 		   sipsess_progr_h *progrh, sipsess_estab_h *estabh,

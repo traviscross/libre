@@ -61,7 +61,8 @@ static void cancel_handler(void *arg)
  */
 int sipsess_accept(struct sipsess **sessp, struct sipsess_sock *sock,
 		   const struct sip_msg *msg, uint16_t scode,
-		   const char *reason, const char *cuser, const char *ctype,
+		   const char *reason, const char *cuser,
+		   const char *pub_gruu, const char *ctype,
 		   struct mbuf *desc,
 		   sip_auth_h *authh, void *aarg, bool aref,
 		   sipsess_offer_h *offerh, sipsess_answer_h *answerh,
@@ -77,7 +78,8 @@ int sipsess_accept(struct sipsess **sessp, struct sipsess_sock *sock,
 	    !cuser || !ctype)
 		return EINVAL;
 
-	err = sipsess_alloc(&sess, sock, cuser, ctype, NULL, authh, aarg, aref,
+	err = sipsess_alloc(&sess, sock, cuser, pub_gruu, ctype, NULL, authh,
+			    aarg, aref, 
 			    offerh, answerh, NULL, estabh, infoh, referh,
 			    closeh, arg);
 	if (err)
@@ -104,6 +106,25 @@ int sipsess_accept(struct sipsess **sessp, struct sipsess_sock *sock,
 		err = sipsess_reply_2xx(sess, msg, scode, reason, desc,
 					fmt, &ap);
 	else
+	    if (sess->pub_gruu)
+		err = sip_treplyf(&sess->st, NULL, sess->sip,
+				  msg, true, scode, reason,
+				  "Contact: <%s>\r\n"
+				  "%v"
+				  "%s%s%s"
+				  "Content-Length: %zu\r\n"
+				  "\r\n"
+				  "%b",
+				  sess->pub_gruu, &msg->dst,
+				  sip_transp_param(msg->tp),
+				  fmt, &ap,
+				  desc ? "Content-Type: " : "",
+				  desc ? sess->ctype : "",
+				  desc ? "\r\n" : "",
+				  desc ? mbuf_get_left(desc) : (size_t)0,
+				  desc ? mbuf_buf(desc) : NULL,
+				  desc ? mbuf_get_left(desc) : (size_t)0);
+	    else
 		err = sip_treplyf(&sess->st, NULL, sess->sip,
 				  msg, true, scode, reason,
 				  "Contact: <sip:%s@%J%s>\r\n"

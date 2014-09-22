@@ -28,8 +28,11 @@ static int send_handler(enum sip_transp tp, const struct sa *src,
 	struct sipsess *sess = arg;
 	(void)dst;
 
-	return mbuf_printf(mb, "Contact: <sip:%s@%J%s>\r\n",
-			   sess->cuser, src, sip_transp_param(tp));
+	if (sess->pub_gruu)
+	    return mbuf_printf(mb, "Contact: <%s>\r\n", sess->pub_gruu);
+	else
+	    return mbuf_printf(mb, "Contact: <sip:%s@%J%s>\r\n",
+			       sess->cuser, src, sip_transp_param(tp));
 }
 
 
@@ -179,6 +182,7 @@ static int invite(struct sipsess *sess)
 int sipsess_connect(struct sipsess **sessp, struct sipsess_sock *sock,
 		    const char *to_uri, const char *from_name,
 		    const char *from_uri, const char *cuser,
+		    const char *pub_gruu,
 		    const char *routev[], uint32_t routec,
 		    const char *ctype, struct mbuf *desc,
 		    sip_auth_h *authh, void *aarg, bool aref,
@@ -193,7 +197,8 @@ int sipsess_connect(struct sipsess **sessp, struct sipsess_sock *sock,
 	if (!sessp || !sock || !to_uri || !from_uri || !cuser || !ctype)
 		return EINVAL;
 
-	err = sipsess_alloc(&sess, sock, cuser, ctype, desc, authh, aarg, aref,
+	err = sipsess_alloc(&sess, sock, cuser, pub_gruu, ctype, desc, authh,
+			    aarg, aref,
 			    offerh, answerh, progrh, estabh, infoh, referh,
 			    closeh, arg);
 	if (err)

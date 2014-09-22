@@ -96,6 +96,7 @@ static void destructor(void *arg)
 	mem_deref(sub->event);
 	mem_deref(sub->id);
 	mem_deref(sub->cuser);
+	mem_deref(sub->pub_gruu);
 	mem_deref(sub->hdrs);
 	mem_deref(sub->refer_hdrs);
 	mem_deref(sub->sock);
@@ -301,8 +302,11 @@ static int send_handler(enum sip_transp tp, const struct sa *src,
 	struct sipsub *sub = arg;
 	(void)dst;
 
-	return mbuf_printf(mb, "Contact: <sip:%s@%J%s>\r\n",
-                           sub->cuser, src, sip_transp_param(tp));
+	if (sub->pub_gruu)
+	    return mbuf_printf(mb, "Contact: <%s>\r\n", sub->pub_gruu);
+	else
+	    return mbuf_printf(mb, "Contact: <sip:%s@%J%s>\r\n",
+			       sub->cuser, src, sip_transp_param(tp));
 }
 
 
@@ -355,7 +359,7 @@ static int sipsub_alloc(struct sipsub **subp, struct sipevent_sock *sock,
 			bool refer, struct sip_dialog *dlg, const char *uri,
 			const char *from_name, const char *from_uri,
 			const char *event, const char *id, uint32_t expires,
-			const char *cuser,
+			const char *cuser, const char *pub_gruu,
 			const char *routev[], uint32_t routec,
 			sip_auth_h *authh, void *aarg, bool aref,
 			sipsub_fork_h *forkh, sipsub_notify_h *notifyh,
@@ -407,6 +411,12 @@ static int sipsub_alloc(struct sipsub **subp, struct sipevent_sock *sock,
 	if (err)
 		goto out;
 
+	if (pub_gruu) {
+		err = str_dup(&sub->pub_gruu, pub_gruu);
+		if (err)
+			goto out;
+	}
+
 	if (fmt) {
 		err = re_vsdprintf(refer ? &sub->refer_hdrs : &sub->hdrs,
 				   fmt, ap);
@@ -450,6 +460,7 @@ static int sipsub_alloc(struct sipsub **subp, struct sipevent_sock *sock,
  * @param id        SIP Event ID (optional)
  * @param expires   Subscription expires value
  * @param cuser     Contact username
+ * @param pub_gruu  Public GRUU
  * @param routev    Optional route vector
  * @param routec    Number of routes
  * @param authh     Authentication handler
@@ -467,6 +478,7 @@ int sipevent_subscribe(struct sipsub **subp, struct sipevent_sock *sock,
 		       const char *uri, const char *from_name,
 		       const char *from_uri, const char *event, const char *id,
 		       uint32_t expires, const char *cuser,
+		       const char *pub_gruu,
 		       const char *routev[], uint32_t routec,
 		       sip_auth_h *authh, void *aarg, bool aref,
 		       sipsub_fork_h *forkh, sipsub_notify_h *notifyh,
@@ -478,7 +490,7 @@ int sipevent_subscribe(struct sipsub **subp, struct sipevent_sock *sock,
 
 	va_start(ap, fmt);
 	err = sipsub_alloc(subp, sock, false, NULL, uri, from_name, from_uri,
-			   event, id, expires, cuser,
+			   event, id, expires, cuser, pub_gruu,
 			   routev, routec, authh, aarg, aref, forkh, notifyh,
 			   closeh, arg, fmt, ap);
 	va_end(ap);
@@ -497,6 +509,7 @@ int sipevent_subscribe(struct sipsub **subp, struct sipevent_sock *sock,
  * @param id        SIP Event ID (optional)
  * @param expires   Subscription expires value
  * @param cuser     Contact username
+ * @param pub_gruu  Public GRUU
  * @param authh     Authentication handler
  * @param aarg      Authentication handler argument
  * @param aref      True to ref argument
@@ -510,7 +523,8 @@ int sipevent_subscribe(struct sipsub **subp, struct sipevent_sock *sock,
 int sipevent_dsubscribe(struct sipsub **subp, struct sipevent_sock *sock,
 			struct sip_dialog *dlg, const char *event,
 			const char *id, uint32_t expires, const char *cuser,
-			sip_auth_h *authh, void *aarg, bool aref,
+			const char *pub_gruu, sip_auth_h *authh, void *aarg,
+			bool aref,
 			sipsub_notify_h *notifyh, sipsub_close_h *closeh,
 			void *arg, const char *fmt, ...)
 {
@@ -519,7 +533,7 @@ int sipevent_dsubscribe(struct sipsub **subp, struct sipevent_sock *sock,
 
 	va_start(ap, fmt);
 	err = sipsub_alloc(subp, sock, false, dlg, NULL, NULL, NULL,
-			   event, id, expires, cuser,
+			   event, id, expires, cuser, pub_gruu,
 			   NULL, 0, authh, aarg, aref, NULL, notifyh,
 			   closeh, arg, fmt, ap);
 	va_end(ap);
@@ -537,6 +551,7 @@ int sipevent_dsubscribe(struct sipsub **subp, struct sipevent_sock *sock,
  * @param from_name SIP From-header Name (optional)
  * @param from_uri  SIP From-header URI
  * @param cuser     Contact username
+ * @param pub_gruu  Public GRUU
  * @param routev    Optional route vector
  * @param routec    Number of routes
  * @param authh     Authentication handler
@@ -553,6 +568,7 @@ int sipevent_dsubscribe(struct sipsub **subp, struct sipevent_sock *sock,
 int sipevent_refer(struct sipsub **subp, struct sipevent_sock *sock,
 		   const char *uri, const char *from_name,
 		   const char *from_uri, const char *cuser,
+		   const char *pub_gruu,
 		   const char *routev[], uint32_t routec,
 		   sip_auth_h *authh, void *aarg, bool aref,
 		   sipsub_fork_h *forkh, sipsub_notify_h *notifyh,
@@ -564,7 +580,7 @@ int sipevent_refer(struct sipsub **subp, struct sipevent_sock *sock,
 
 	va_start(ap, fmt);
 	err = sipsub_alloc(subp, sock, true, NULL, uri, from_name, from_uri,
-			   "refer", NULL, DEFAULT_EXPIRES, cuser,
+			   "refer", NULL, DEFAULT_EXPIRES, cuser, pub_gruu,
 			   routev, routec, authh, aarg, aref, forkh, notifyh,
 			   closeh, arg, fmt, ap);
 	va_end(ap);
@@ -580,6 +596,7 @@ int sipevent_refer(struct sipsub **subp, struct sipevent_sock *sock,
  * @param sock      SIP Event socket
  * @param dlg       Established SIP Dialog
  * @param cuser     Contact username
+ * @param pub_gruu  Public GRUU
  * @param authh     Authentication handler
  * @param aarg      Authentication handler argument
  * @param aref      True to ref argument
@@ -592,6 +609,7 @@ int sipevent_refer(struct sipsub **subp, struct sipevent_sock *sock,
  */
 int sipevent_drefer(struct sipsub **subp, struct sipevent_sock *sock,
 		    struct sip_dialog *dlg, const char *cuser,
+		    const char *pub_gruu,
 		    sip_auth_h *authh, void *aarg, bool aref,
 		    sipsub_notify_h *notifyh, sipsub_close_h *closeh,
 		    void *arg, const char *fmt, ...)
@@ -601,7 +619,7 @@ int sipevent_drefer(struct sipsub **subp, struct sipevent_sock *sock,
 
 	va_start(ap, fmt);
 	err = sipsub_alloc(subp, sock, true, dlg, NULL, NULL, NULL,
-			   "refer", NULL, DEFAULT_EXPIRES, cuser,
+			   "refer", NULL, DEFAULT_EXPIRES, cuser, pub_gruu,
 			   NULL, 0, authh, aarg, aref, NULL, notifyh,
 			   closeh, arg, fmt, ap);
 	va_end(ap);
@@ -641,6 +659,7 @@ int sipevent_fork(struct sipsub **subp, struct sipsub *osub,
 	sub->event   = mem_ref(osub->event);
 	sub->id      = mem_ref(osub->id);
 	sub->cuser   = mem_ref(osub->cuser);
+	sub->pub_gruu= mem_ref(osub->pub_gruu);
 	sub->hdrs    = mem_ref(osub->hdrs);
 	sub->refer   = osub->refer;
 	sub->sock    = mem_ref(osub->sock);

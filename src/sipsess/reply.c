@@ -93,22 +93,41 @@ int sipsess_reply_2xx(struct sipsess *sess, const struct sip_msg *msg,
 	reply->msg  = mem_ref((void *)msg);
 	reply->sess = sess;
 
-	err = sip_treplyf(&sess->st, &reply->mb, sess->sip,
-			  msg, true, scode, reason,
-			  "Contact: <sip:%s@%J%s>\r\n"
-			  "%v"
-			  "%s%s%s"
-			  "Content-Length: %zu\r\n"
-			  "\r\n"
-			  "%b",
-			  sess->cuser, &msg->dst, sip_transp_param(msg->tp),
-			  fmt, ap,
-			  desc ? "Content-Type: " : "",
-			  desc ? sess->ctype : "",
-			  desc ? "\r\n" : "",
-			  desc ? mbuf_get_left(desc) : (size_t)0,
-			  desc ? mbuf_buf(desc) : NULL,
-			  desc ? mbuf_get_left(desc) : (size_t)0);
+	if (sess->pub_gruu)
+	        err = sip_treplyf(&sess->st, &reply->mb, sess->sip,
+				  msg, true, scode, reason,
+				  "Contact: <%s>\r\n"
+				  "%v"
+				  "%s%s%s"
+				  "Content-Length: %zu\r\n"
+				  "\r\n"
+				  "%b",
+				  sess->pub_gruu,
+				  fmt, ap,
+				  desc ? "Content-Type: " : "",
+				  desc ? sess->ctype : "",
+				  desc ? "\r\n" : "",
+				  desc ? mbuf_get_left(desc) : (size_t)0,
+				  desc ? mbuf_buf(desc) : NULL,
+				  desc ? mbuf_get_left(desc) : (size_t)0);
+	else
+     	        err = sip_treplyf(&sess->st, &reply->mb, sess->sip,
+				  msg, true, scode, reason,
+				  "Contact: <sip:%s@%J%s>\r\n"
+				  "%v"
+				  "%s%s%s"
+				  "Content-Length: %zu\r\n"
+				  "\r\n"
+				  "%b",
+				  sess->cuser, &msg->dst,
+				  sip_transp_param(msg->tp),
+				  fmt, ap,
+				  desc ? "Content-Type: " : "",
+				  desc ? sess->ctype : "",
+				  desc ? "\r\n" : "",
+				  desc ? mbuf_get_left(desc) : (size_t)0,
+				  desc ? mbuf_buf(desc) : NULL,
+				  desc ? mbuf_get_left(desc) : (size_t)0);
 
 	if (err)
 		goto out;

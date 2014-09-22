@@ -71,6 +71,7 @@ static void destructor(void *arg)
 	mem_deref(not->event);
 	mem_deref(not->id);
 	mem_deref(not->cuser);
+	mem_deref(not->pub_gruu);
 	mem_deref(not->hdrs);
 	mem_deref(not->ctype);
 	mem_deref(not->sock);
@@ -180,8 +181,12 @@ static int send_handler(enum sip_transp tp, const struct sa *src,
 	struct sipnot *not = arg;
 	(void)dst;
 
-	return mbuf_printf(mb, "Contact: <sip:%s@%J%s>\r\n",
-                           not->cuser, src, sip_transp_param(tp));
+	if (not->pub_gruu)
+	    return mbuf_printf(mb, "Contact: <%s>\r\n", not->pub_gruu);
+	else
+	    return mbuf_printf(mb, "Contact: <sip:%s@%J%s>\r\n",
+			       not->cuser, src, sip_transp_param(tp));
+
 }
 
 
@@ -291,7 +296,8 @@ int sipnot_reply(struct sipnot *not, const struct sip_msg *msg,
 			   "Expires: %u\r\n"
 			   "Content-Length: 0\r\n"
 			   "\r\n",
-			   not->cuser, &msg->dst, sip_transp_param(msg->tp),
+			   not->cuser, not->pub_gruu,
+			   &msg->dst, sip_transp_param(msg->tp),
 			   expires);
 }
 
@@ -301,7 +307,7 @@ int sipevent_accept(struct sipnot **notp, struct sipevent_sock *sock,
 		    const struct sipevent_event *event,
 		    uint16_t scode, const char *reason, uint32_t expires_min,
 		    uint32_t expires_dfl, uint32_t expires_max,
-		    const char *cuser, const char *ctype,
+		    const char *cuser, const char *pub_gruu, const char *ctype,
 		    sip_auth_h *authh, void *aarg, bool aref,
 		    sipnot_close_h *closeh, void *arg, const char *fmt, ...)
 {
@@ -365,6 +371,12 @@ int sipevent_accept(struct sipnot **notp, struct sipevent_sock *sock,
 	err = str_dup(&not->cuser, cuser);
 	if (err)
 		goto out;
+
+	if (pub_gruu) {
+		err = str_dup(&not->pub_gruu, pub_gruu);
+		if (err)
+			goto out;
+	}
 
 	err = str_dup(&not->ctype, ctype);
 	if (err)

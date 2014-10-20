@@ -126,6 +126,9 @@ struct sdp_format *sdp_media_format_apply(const struct sdp_media *m,
 					  sdp_format_h *fmth, void *arg);
 const struct list *sdp_media_format_lst(const struct sdp_media *m, bool local);
 const char *sdp_media_rattr(const struct sdp_media *m, const char *name);
+const char *sdp_media_session_rattr(const struct sdp_media *m,
+				    const struct sdp_session *sess,
+				    const char *name);
 const char *sdp_media_rattr_apply(const struct sdp_media *m, const char *name,
 				  sdp_attr_h *attrh, void *arg);
 const char *sdp_media_name(const struct sdp_media *m);
@@ -166,3 +169,17 @@ extern const char sdp_media_text[];
 
 extern const char sdp_proto_rtpavp[];
 extern const char sdp_proto_rtpsavp[];
+
+
+/* utility functions */
+
+/** RTP Header Extensions, as defined in RFC 5285 */
+struct sdp_extmap {
+	struct pl name;
+	struct pl attrs;
+	enum sdp_dir dir;
+	bool dir_set;
+	uint32_t id;
+};
+
+int sdp_extmap_decode(struct sdp_extmap *ext, const char *val);

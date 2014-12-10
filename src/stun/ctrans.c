@@ -11,6 +11,8 @@
 #include <re_sa.h>
 #include <re_udp.h>
 #include <re_tcp.h>
+#include <re_srtp.h>
+#include <re_tls.h>
 #include <re_list.h>
 #include <re_tmr.h>
 #include <re_md5.h>
@@ -85,7 +87,8 @@ static void timeout_handler(void *arg)
 		goto error;
 
 	ct->mb->pos = ct->pos;
-	err = udp_send(ct->sock, &ct->dst, ct->mb);
+
+	err = stun_send(ct->proto, ct->sock, &ct->dst, ct->mb);
 	if (err)
 		goto error;
 
@@ -152,6 +155,15 @@ static void tcp_close_handler(int err, void *arg)
 }
 
 
+/**
+ * Handle an incoming STUN message to a Client Transaction
+ *
+ * @param stun STUN instance
+ * @param msg  STUN message
+ * @param ua   Unknown attributes
+ *
+ * @return 0 if success, otherwise errorcode
+ */
 int stun_ctrans_recv(struct stun *stun, const struct stun_msg *msg,
 		     const struct stun_unknown_attr *ua)
 {
@@ -282,6 +294,21 @@ int stun_ctrans_request(struct stun_ctrans **ctp, struct stun *stun, int proto,
 				  tcp_estab_handler, tcp_recv_handler,
 				  tcp_close_handler, ct);
 		break;
+
+#ifdef USE_DTLS
+	case STUN_TRANSP_DTLS:
+		if (!sock) {
+			err = EINVAL;
+			break;
+		}
+
+		ct->ival = stun_conf(stun)->rto;
+		tmr_start(&ct->tmr, ct->ival, timeout_handler, ct);
+
+		ct->txc = 1;
+		err = dtls_send(ct->sock, mb);
+		break;
+#endif
 
 	default:
 		err = EPROTONOSUPPORT;

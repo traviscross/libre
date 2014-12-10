@@ -27,6 +27,7 @@ int tls_alloc(struct tls **tlsp, enum tls_method method, const char *keyfile,
 	      const char *pwd);
 int tls_add_ca(struct tls *tls, const char *capath);
 int tls_set_selfsigned(struct tls *tls, const char *cn);
+int tls_set_certificate(struct tls *tls, const char *cert, size_t len);
 void tls_set_verify_client(struct tls *tls);
 int tls_set_srtp(struct tls *tls, const char *suites);
 int tls_fingerprint(const struct tls *tls, enum tls_fingerprint type,
@@ -59,6 +60,7 @@ struct dtls_sock;
 int dtls_listen(struct dtls_sock **sockp, const struct sa *laddr,
 		struct udp_sock *us, uint32_t htsize, int layer,
 		dtls_conn_h *connh, void *arg);
+struct udp_sock *dtls_udp_sock(struct dtls_sock *sock);
 int dtls_connect(struct tls_conn **ptc, struct tls *tls,
 		 struct dtls_sock *sock, const struct sa *peer,
 		 dtls_estab_h *estabh, dtls_recv_h *recvh,
@@ -68,3 +70,5 @@ int dtls_accept(struct tls_conn **ptc, struct tls *tls,
 		dtls_estab_h *estabh, dtls_recv_h *recvh,
 		dtls_close_h *closeh, void *arg);
 int dtls_send(struct tls_conn *tc, struct mbuf *mb);
+void dtls_set_handlers(struct tls_conn *tc, dtls_estab_h *estabh,
+		       dtls_recv_h *recvh, dtls_close_h *closeh, void *arg);

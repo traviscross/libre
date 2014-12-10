@@ -5,6 +5,7 @@
  */
 
 
+/** STUN Protocol values */
 enum {
 	STUN_PORT        = 3478,   /**< STUN Port number */
 	STUNS_PORT       = 5349,   /**< STUNS Port number                    */
@@ -21,6 +22,13 @@ enum {
 enum stun_af {
 	STUN_AF_IPv4 = 0x01,  /**< IPv4 Address Family */
 	STUN_AF_IPv6 = 0x02   /**< IPv6 Address Family */
+};
+
+/** STUN Transport */
+enum stun_transp {
+	STUN_TRANSP_UDP = IPPROTO_UDP, /**< UDP-transport (struct udp_sock)  */
+	STUN_TRANSP_TCP = IPPROTO_TCP, /**< TCP-transport (struct tcp_conn)  */
+	STUN_TRANSP_DTLS,              /**< DTLS-transport (struct tls_conn) */
 };
 
 /** STUN Methods */
@@ -99,6 +107,7 @@ struct stun_even_port {
 	bool r;
 };
 
+/** Defines a STUN attribute */
 struct stun_attr {
 	struct le le;
 	uint16_t type;
@@ -145,12 +154,13 @@ struct stun_attr {
 };
 
 
+/** STUN Configuration */
 struct stun_conf {
-	uint32_t rto;
-	uint32_t rc;
-	uint32_t rm;
-	uint32_t ti;
-	uint8_t tos;          /**< Type-of-service field   */
+	uint32_t rto;  /**< RTO Retransmission TimeOut [ms]        */
+	uint32_t rc;   /**< Rc Retransmission count (default 7)    */
+	uint32_t rm;   /**< Rm Max retransmissions (default 16)    */
+	uint32_t ti;   /**< Ti Timeout for reliable transport [ms] */
+	uint8_t tos;   /**< Type-of-service field                  */
 };
 
 
@@ -215,6 +225,7 @@ void stun_msg_dump(const struct stun_msg *msg);
 const char *stun_class_name(uint16_t cls);
 const char *stun_method_name(uint16_t method);
 const char *stun_attr_name(uint16_t type);
+const char *stun_transp_name(enum stun_transp tp);
 
 
 /* DNS Discovery of a STUN Server */

@@ -39,12 +39,12 @@ static int candpairs_form(struct icem *icem)
 
 	for (le = icem->lcandl.head; le; le = le->next) {
 
-		struct cand *lcand = le->data;
+		struct ice_cand *lcand = le->data;
 		struct le *rle;
 
 		for (rle = icem->rcandl.head; rle; rle = rle->next) {
 
-			struct cand *rcand = rle->data;
+			struct ice_cand *rcand = rle->data;
 
 			if (lcand->compid != rcand->compid)
 				continue;
@@ -63,16 +63,16 @@ static int candpairs_form(struct icem *icem)
 
 
 /* Replace server reflexive candidates by its base */
-static const struct sa *cand_srflx_addr(const struct cand *c)
+static const struct sa *cand_srflx_addr(const struct ice_cand *c)
 {
-	return (CAND_TYPE_SRFLX == c->type) ? &c->base->addr : &c->addr;
+	return (ICE_CAND_TYPE_SRFLX == c->type) ? &c->base->addr : &c->addr;
 }
 
 
 /* return: NULL to keep, pointer to remove object */
 static void *unique_handler(struct le *le1, struct le *le2)
 {
-	struct candpair *cp1 = le1->data, *cp2 = le2->data;
+	struct ice_candpair *cp1 = le1->data, *cp2 = le2->data;
 
 	if (cp1->comp->id != cp2->comp->id)
 		return NULL;
@@ -123,11 +123,11 @@ static void candpair_set_states(struct icem *icem)
 
 	for (le = icem->checkl.head; le; le = le->next) {
 
-		struct candpair *cp = le->data;
+		struct ice_candpair *cp = le->data;
 
 		for (le2 = icem->checkl.head; le2; le2 = le2->next) {
 
-			struct candpair *cp2 = le2->data;
+			struct ice_candpair *cp2 = le2->data;
 
 			if (!icem_candpair_cmp_fnd(cp, cp2))
 				continue;
@@ -137,7 +137,7 @@ static void candpair_set_states(struct icem *icem)
 				cp = cp2;
 		}
 
-		icem_candpair_set_state(cp, CANDPAIR_WAITING);
+		icem_candpair_set_state(cp, ICE_CANDPAIR_WAITING);
 	}
 }
 
@@ -199,7 +199,7 @@ static bool iscompleted(const struct icem *icem)
 
 	for (le = icem->checkl.head; le; le = le->next) {
 
-		const struct candpair *cp = le->data;
+		const struct ice_candpair *cp = le->data;
 
 		if (!icem_candpair_iscompleted(cp))
 			return false;
@@ -212,14 +212,14 @@ static bool iscompleted(const struct icem *icem)
 /* 8.  Concluding ICE Processing */
 static void concluding_ice(struct icem_comp *comp)
 {
-	struct candpair *cp;
+	struct ice_candpair *cp;
 
 	if (!comp || comp->concluded)
 		return;
 
 	/* pick the best candidate pair, highest priority */
 	cp = icem_candpair_find_st(&comp->icem->validl, comp->id,
-				   CANDPAIR_SUCCEEDED);
+				   ICE_CANDPAIR_SUCCEEDED);
 	if (!cp) {
 		DEBUG_WARNING("{%s.%u} conclude: no valid candpair found"
 			      " (validlist=%u)\n",
@@ -279,7 +279,7 @@ void icem_checklist_update(struct icem *icem)
 		icem_comp_keepalive(comp, true);
 	}
 
-	icem->state = err ? CHECKLIST_FAILED : CHECKLIST_COMPLETED;
+	icem->state = err ? ICE_CHECKLIST_FAILED : ICE_CHECKLIST_COMPLETED;
 
 	if (icem->chkh) {
 		icem->chkh(err, icem->ice->lrole == ROLE_CONTROLLING,
@@ -296,7 +296,7 @@ void icem_checklist_update(struct icem *icem)
  *
  * @return Local address if available, otherwise NULL
  */
-const struct sa *icem_selected_laddr(const struct icem *icem, uint8_t compid)
+const struct sa *icem_selected_laddr(const struct icem *icem, unsigned compid)
 {
 	const struct icem_comp *comp = icem_comp_find(icem, compid);
 	if (!comp || !comp->cp_sel)

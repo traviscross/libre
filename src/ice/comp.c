@@ -78,30 +78,31 @@ static void destructor(void *arg)
 }
 
 
-static struct cand *cand_default(const struct list *lcandl, uint8_t compid)
+static struct ice_cand *cand_default(const struct list *lcandl,
+				     unsigned compid)
 {
-	struct cand *def = NULL;
+	struct ice_cand *def = NULL;
 	struct le *le;
 
 	/* NOTE: list must be sorted by priority */
 	for (le = list_head(lcandl); le; le = le->next) {
 
-		struct cand *cand = le->data;
+		struct ice_cand *cand = le->data;
 
 		if (cand->compid != compid)
 			continue;
 
 		switch (cand->type) {
 
-		case CAND_TYPE_RELAY:
+		case ICE_CAND_TYPE_RELAY:
 			return cand;
 
-		case CAND_TYPE_SRFLX:
-			if (!def || CAND_TYPE_SRFLX != def->type)
+		case ICE_CAND_TYPE_SRFLX:
+			if (!def || ICE_CAND_TYPE_SRFLX != def->type)
 				def = cand;
 			break;
 
-		case CAND_TYPE_HOST:
+		case ICE_CAND_TYPE_HOST:
 			if (!def)
 				def = cand;
 			break;
@@ -156,7 +157,7 @@ int icem_comp_alloc(struct icem_comp **cp, struct icem *icem, int id,
 
 int icem_comp_set_default_cand(struct icem_comp *comp)
 {
-	struct cand *cand;
+	struct ice_cand *cand;
 
 	if (!comp)
 		return EINVAL;
@@ -172,7 +173,8 @@ int icem_comp_set_default_cand(struct icem_comp *comp)
 }
 
 
-void icem_comp_set_default_rcand(struct icem_comp *comp, struct cand *rcand)
+void icem_comp_set_default_rcand(struct icem_comp *comp,
+				 struct ice_cand *rcand)
 {
 	if (!comp)
 		return;
@@ -192,12 +194,12 @@ void icem_comp_set_default_rcand(struct icem_comp *comp, struct cand *rcand)
 }
 
 
-void icem_comp_set_selected(struct icem_comp *comp, struct candpair *cp)
+void icem_comp_set_selected(struct icem_comp *comp, struct ice_candpair *cp)
 {
 	if (!comp || !cp)
 		return;
 
-	if (cp->state != CANDPAIR_SUCCEEDED) {
+	if (cp->state != ICE_CANDPAIR_SUCCEEDED) {
 		DEBUG_WARNING("{%s.%u} set_selected: invalid state %s\n",
 			      comp->icem->name, comp->id,
 			      ice_candpair_state2name(cp->state));
@@ -208,7 +210,7 @@ void icem_comp_set_selected(struct icem_comp *comp, struct candpair *cp)
 }
 
 
-struct icem_comp *icem_comp_find(const struct icem *icem, uint8_t compid)
+struct icem_comp *icem_comp_find(const struct icem *icem, unsigned compid)
 {
 	struct le *le;
 
@@ -230,7 +232,7 @@ struct icem_comp *icem_comp_find(const struct icem *icem, uint8_t compid)
 static void timeout(void *arg)
 {
 	struct icem_comp *comp = arg;
-	struct candpair *cp;
+	struct ice_candpair *cp;
 
 	tmr_start(&comp->tmr_ka, ICE_DEFAULT_Tr * 1000 + rand_u16() % 1000,
 		  timeout, comp);
@@ -241,7 +243,7 @@ static void timeout(void *arg)
 		return;
 
 	(void)stun_indication(comp->icem->proto, comp->sock, &cp->rcand->addr,
-			      (cp->lcand->type == CAND_TYPE_RELAY) ? 4 : 0,
+			      (cp->lcand->type == ICE_CAND_TYPE_RELAY) ? 4 : 0,
 			      STUN_METHOD_BINDING, NULL, 0, true, 0);
 }
 

@@ -25,10 +25,10 @@
 static const char *sw = "ice stunsrv v" VERSION " (" ARCH "/" OS ")";
 
 
-static void triggered_check(struct icem *icem, struct cand *lcand,
-			    struct cand *rcand)
+static void triggered_check(struct icem *icem, struct ice_cand *lcand,
+			    struct ice_cand *rcand)
 {
-	struct candpair *cp = NULL;
+	struct ice_candpair *cp = NULL;
 	int err;
 
 	if (lcand && rcand)
@@ -45,24 +45,24 @@ static void triggered_check(struct icem *icem, struct cand *lcand,
 			 *       both agents are stuck on sending
 			 *       triggered checks on the same candidate pair
 			 */
-		case CANDPAIR_INPROGRESS:
+		case ICE_CANDPAIR_INPROGRESS:
 			icem_candpair_cancel(cp);
 			/*@fallthrough@*/
 #endif
 
-		case CANDPAIR_FAILED:
-			icem_candpair_set_state(cp, CANDPAIR_WAITING);
+		case ICE_CANDPAIR_FAILED:
+			icem_candpair_set_state(cp, ICE_CANDPAIR_WAITING);
 			/*@fallthrough@*/
 
-		case CANDPAIR_FROZEN:
-		case CANDPAIR_WAITING:
+		case ICE_CANDPAIR_FROZEN:
+		case ICE_CANDPAIR_WAITING:
 			err = icem_conncheck_send(cp, false, true);
 			if (err) {
 				DEBUG_WARNING("triggered check failed\n");
 			}
 			break;
 
-		case CANDPAIR_SUCCEEDED:
+		case ICE_CANDPAIR_SUCCEEDED:
 		default:
 			break;
 		}
@@ -80,7 +80,7 @@ static void triggered_check(struct icem *icem, struct cand *lcand,
 
 		icem_candpair_prio_order(&icem->checkl);
 
-		icem_candpair_set_state(cp, CANDPAIR_WAITING);
+		icem_candpair_set_state(cp, ICE_CANDPAIR_WAITING);
 
 		(void)icem_conncheck_send(cp, false, true);
 #endif
@@ -96,8 +96,8 @@ static int handle_stun_full(struct ice *ice, struct icem *icem,
 			    struct icem_comp *comp, const struct sa *src,
 			    uint32_t prio, bool use_cand, bool tunnel)
 {
-	struct cand *lcand = NULL, *rcand;
-	struct candpair *cp = NULL;
+	struct ice_cand *lcand = NULL, *rcand;
+	struct ice_candpair *cp = NULL;
 	int err;
 
 	rcand = icem_cand_find(&icem->rcandl, comp->id, src);
@@ -146,7 +146,7 @@ static int handle_stun_full(struct ice *ice, struct icem *icem,
 	/* 7.2.1.5.  Updating the Nominated Flag */
 	if (use_cand) {
 		if (ice->lrole == ROLE_CONTROLLED &&
-		    cp->state == CANDPAIR_SUCCEEDED) {
+		    cp->state == ICE_CANDPAIR_SUCCEEDED) {
 
 			if (!cp->nominated) {
 				icecomp_printf(comp, "setting NOMINATED"
@@ -177,8 +177,8 @@ static int handle_stun_lite(struct icem *icem,
 			    struct icem_comp *comp, const struct sa *src,
 			    bool use_cand)
 {
-	struct cand *lcand, *rcand;
-	struct candpair *cp;
+	struct ice_cand *lcand, *rcand;
+	struct ice_candpair *cp;
 	int err;
 
 	if (!use_cand)

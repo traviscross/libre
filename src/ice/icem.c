@@ -75,7 +75,7 @@ int icem_alloc(struct icem **icemp, struct ice *ice, int proto, int layer,
 	icem->ice   = ice;
 	icem->layer = layer;
 	icem->proto = proto;
-	icem->state = CHECKLIST_NULL;
+	icem->state = ICE_CHECKLIST_NULL;
 	icem->nstun = 0;
 	icem->gh    = gh;
 	icem->chkh  = chkh;
@@ -120,7 +120,7 @@ void icem_set_name(struct icem *icem, const char *name)
  *
  * @return 0 if success, otherwise errorcode
  */
-int icem_comp_add(struct icem *icem, uint8_t compid, void *sock)
+int icem_comp_add(struct icem *icem, unsigned compid, void *sock)
 {
 	struct icem_comp *comp;
 	int err;
@@ -152,7 +152,7 @@ int icem_comp_add(struct icem *icem, uint8_t compid, void *sock)
  *
  * @return 0 if success, otherwise errorcode
  */
-int icem_cand_add(struct icem *icem, uint8_t compid, uint16_t lprio,
+int icem_cand_add(struct icem *icem, unsigned compid, uint16_t lprio,
 		  const char *ifname, const struct sa *addr)
 {
 	if (!icem_comp_find(icem, compid))
@@ -165,7 +165,7 @@ int icem_cand_add(struct icem *icem, uint8_t compid, uint16_t lprio,
 
 static void *unique_handler(struct le *le1, struct le *le2)
 {
-	struct cand *c1 = le1->data, *c2 = le2->data;
+	struct ice_cand *c1 = le1->data, *c2 = le2->data;
 
 	if (c1->base != c2->base || !sa_cmp(&c1->addr, &c2->addr, SA_ALL))
 		return NULL;
@@ -195,7 +195,7 @@ void icem_cand_redund_elim(struct icem *icem)
  *
  * @return Default Local Candidate address if set, otherwise NULL
  */
-const struct sa *icem_cand_default(struct icem *icem, uint8_t compid)
+const struct sa *icem_cand_default(struct icem *icem, unsigned compid)
 {
 	const struct icem_comp *comp = icem_comp_find(icem, compid);
 
@@ -215,10 +215,10 @@ const struct sa *icem_cand_default(struct icem *icem, uint8_t compid)
  *
  * @return True if ICE is supported, otherwise false
  */
-bool icem_verify_support(struct icem *icem, uint8_t compid,
+bool icem_verify_support(struct icem *icem, unsigned compid,
 			 const struct sa *raddr)
 {
-	struct cand *rcand;
+	struct ice_cand *rcand;
 	bool match;
 
 	if (!icem)
@@ -248,7 +248,7 @@ bool icem_verify_support(struct icem *icem, uint8_t compid,
  *
  * @return 0 if success, otherwise errorcode
  */
-int icem_add_chan(struct icem *icem, uint8_t compid, const struct sa *raddr)
+int icem_add_chan(struct icem *icem, unsigned compid, const struct sa *raddr)
 {
 	struct icem_comp *comp;
 
@@ -281,8 +281,8 @@ static void purge_relayed(struct icem *icem, struct icem_comp *comp)
 	 * Purge all Candidate-Pairs where the Local candidate
 	 * is of type "Relay"
 	 */
-	icem_candpairs_flush(&icem->checkl, CAND_TYPE_RELAY, comp->id);
-	icem_candpairs_flush(&icem->validl, CAND_TYPE_RELAY, comp->id);
+	icem_candpairs_flush(&icem->checkl, ICE_CAND_TYPE_RELAY, comp->id);
+	icem_candpairs_flush(&icem->validl, ICE_CAND_TYPE_RELAY, comp->id);
 
 	comp->turnc = mem_deref(comp->turnc);
 }
@@ -307,7 +307,7 @@ void icem_update(struct icem *icem)
 		/* remove TURN client if not used by local "Selected" */
 		if (comp->cp_sel) {
 
-			if (comp->cp_sel->lcand->type != CAND_TYPE_RELAY)
+			if (comp->cp_sel->lcand->type != ICE_CAND_TYPE_RELAY)
 				purge_relayed(icem, comp);
 		}
 	}
@@ -397,7 +397,7 @@ struct list *icem_rcandl(const struct icem *icem)
  *
  * @param icem ICE Media object
  *
- * @return Checklist (struct candpair)
+ * @return Checklist (struct ice_candpair)
  */
 struct list *icem_checkl(const struct icem *icem)
 {
@@ -410,7 +410,7 @@ struct list *icem_checkl(const struct icem *icem)
  *
  * @param icem ICE Media object
  *
- * @return Validlist (struct candpair)
+ * @return Validlist (struct ice_candpair)
  */
 struct list *icem_validl(const struct icem *icem)
 {

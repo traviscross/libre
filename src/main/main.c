@@ -354,12 +354,12 @@ static int set_kqueue_fds(struct re *re, int fd, int flags)
 
 	memset(kev, 0, sizeof(kev));
 
-	if (flags & FD_READ) {
-		EV_SET(&kev[n], fd, EVFILT_READ, EV_ADD, 0, 0, 0);
-		++n;
-	}
 	if (flags & FD_WRITE) {
 		EV_SET(&kev[n], fd, EVFILT_WRITE, EV_ADD, 0, 0, 0);
+		++n;
+	}
+	if (flags & FD_READ) {
+		EV_SET(&kev[n], fd, EVFILT_READ, EV_ADD, 0, 0, 0);
 		++n;
 	}
 
@@ -1081,7 +1081,7 @@ int poll_method_set(enum poll_method method)
 #endif
 #ifdef HAVE_SELECT
 	case METHOD_SELECT:
-		if (re->maxfds > FD_SETSIZE) {
+		if (re->maxfds > (int)FD_SETSIZE) {
 			DEBUG_WARNING("SELECT: maxfds > FD_SETSIZE\n");
 			return EMFILE;
 		}

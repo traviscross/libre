@@ -660,3 +660,73 @@ const char *tls_cipher_name(const struct tls_conn *tc)
 
 	return SSL_get_cipher_name(tc->ssl);
 }
+
+
+/**
+ * Set the ciphers to use for this TLS context
+ *
+ * @param tls      TLS Context
+ * @param cipherv  Vector of cipher names, in order of priority
+ * @param count    Number of cipher names in the vector
+ *
+ * @return 0 if success, otherwise errorcode
+ */
+int tls_set_ciphers(struct tls *tls, const char *cipherv[], size_t count)
+{
+	struct mbuf *mb;
+	int r, err;
+	size_t i;
+
+	if (!tls || !cipherv || !count)
+		return EINVAL;
+
+	mb = mbuf_alloc(32 * count);
+	if (!mb)
+		return ENOMEM;
+
+	for (i=0; i<count; i++) {
+
+		err = mbuf_printf(mb, "%s%s", i>0 ? ":" : "", cipherv[i]);
+		if (err)
+			goto out;
+	}
+
+	err = mbuf_write_u8(mb, '\0');
+	if (err)
+		goto out;
+
+	r = SSL_CTX_set_cipher_list(tls->ctx, (char *)mb->buf);
+	if (r <= 0) {
+		ERR_clear_error();
+		err = EPROTO;
+		goto out;
+	}
+
+ out:
+	mem_deref(mb);
+
+	return err;
+}
+
+
+/**
+ * Set the server name on a TLS Connection, using TLS SNI extension.
+ *
+ * @param tc         TLS Connection
+ * @param servername Server name
+ *
+ * @return 0 if success, otherwise errorcode
+ */
+int tls_set_servername(struct tls_conn *tc, const char *servername)
+{
+	if (!tc || !servername)
+		return EINVAL;
+
+	if (1 != SSL_set_tlsext_host_name(tc->ssl, servername)) {
+		DEBUG_WARNING("tls: SSL_set_tlsext_host_name error\n");
+		ERR_clear_error();
+		return EPROTO;
+	}
+
+	return 0;
+}

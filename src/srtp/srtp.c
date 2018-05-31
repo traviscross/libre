@@ -151,6 +151,7 @@ int srtp_encrypt(struct srtp *srtp, struct mbuf *mb)
 	size_t start;
 	uint64_t ix;
 	int err;
+	int diff;
 
 	if (!srtp || !mb)
 		return EINVAL;
@@ -168,7 +169,8 @@ int srtp_encrypt(struct srtp *srtp, struct mbuf *mb)
 		return err;
 
 	/* Roll-Over Counter (ROC) */
-	if (seq_diff(strm->s_l, hdr.seq) <= -32768) {
+	diff = seq_diff(strm->s_l, hdr.seq);
+	if (diff <= -32768) {
 		strm->roc++;
 		strm->s_l = 0;
 	}
@@ -211,7 +213,7 @@ int srtp_encrypt(struct srtp *srtp, struct mbuf *mb)
 			return err;
 	}
 
-	if (hdr.seq > strm->s_l)
+    if (diff > 0 && (strm->roc == 0 || diff < 32768))
 		strm->s_l = hdr.seq;
 
 	mb->pos = start;

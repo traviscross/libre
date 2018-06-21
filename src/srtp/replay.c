@@ -10,9 +10,9 @@
 #include "srtp.h"
 
 
-enum {
-	SRTP_WINDOW_SIZE = 64
-};
+#ifndef SRTP_WINDOW_SIZE
+#define SRTP_WINDOW_SIZE  (64)  /**< Maximum number of packets in replay buffer */
+#endif
 
 
 void srtp_replay_init(struct replay *replay)
